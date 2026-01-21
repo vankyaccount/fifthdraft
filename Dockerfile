@@ -3,19 +3,18 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Ensure devDependencies are installed (not production mode during build)
-ENV NODE_ENV=development
-
 # Copy package files
 COPY package*.json ./
 
 # Install ALL dependencies including devDependencies
-RUN npm install --include=dev
+# Use --omit=false to ensure devDependencies are installed regardless of NODE_ENV
+RUN npm ci --omit=false
 
 # Copy source code
 COPY . .
 
-# Build the Next.js application
+# Build the Next.js application in production mode
+ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
