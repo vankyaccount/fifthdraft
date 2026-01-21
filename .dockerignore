@@ -1,0 +1,81 @@
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js build output
+.next
+out
+
+# Testing
+coverage
+.nyc_output
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files (handled separately in production)
+.env
+.env.local
+.env.development
+.env.production
+.env*.local
+
+# Git
+.git
+.gitignore
+
+# Documentation (not needed in container)
+*.md
+!README.md
+docs/
+
+# Development files
+*.log
+*.tmp
+*.temp
+
+# Test files
+__tests__
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+jest.config.*
+vitest.config.*
+
+# Supabase local development
+supabase/.branches
+supabase/.temp
+
+# Claude config
+.claude/
+
+# Misc development files
+Credentials.docx
+~$*.docx
+*.sql
+!supabase/migrations/*.sql
+
+# Build scripts (not needed in container)
+scripts/
+*.bat
+*.sh
+
+# Vercel
+.vercel
+
+# Public test files
+public/test.html
+public/index.html
+
+# TypeScript build info
+*.tsbuildinfo
