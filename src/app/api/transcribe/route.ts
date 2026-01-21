@@ -1,9 +1,11 @@
-import { createClient } from '@/lib/supabase/server'
+import { withAuth, type AuthenticatedRequest } from '@/lib/auth'
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
 import { getBrainstormingPrompt, getMeetingPrompt, type BrainstormingOutcome, type MeetingOutcome } from '@/lib/ai/brainstorming-prompts'
 import { processBrainstormingNote } from '@/lib/services/brainstorming-processor'
+import { db } from '@/lib/db/queries'
+import { LocalStorage } from '@/lib/storage/local'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
@@ -14,33 +16,29 @@ const anthropic = new Anthropic({
 })
 
 export async function POST(req: NextRequest) {
-  try {
-    const { recordingId } = await req.json()
+  return withAuth(req, async (authReq: AuthenticatedRequest) => {
+    try {
+      const { recordingId } = await authReq.json()
 
-    const supabase = await createClient()
+      // Get recording
+      const recording = await db.recordings.findById(recordingId)
 
-    // Get recording
-    const { data: recording, error: recordingError } = await supabase
-      .from('recordings')
-      .select('*')
-      .eq('id', recordingId)
-      .single()
+      if (!recording) {
+        return NextResponse.json({ error: 'Recording not found' }, { status: 404 })
+      }
 
-    if (recordingError || !recording) {
-      return NextResponse.json({ error: 'Recording not found' }, { status: 404 })
-    }
+      // Verify user owns this recording
+      if (recording.user_id !== authReq.user.id) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+      }
 
-    // CRITICAL: Server-side validation - fetch user profile and check tier/quota
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('subscription_tier, minutes_used, minutes_quota, settings')
-      .eq('id', recording.user_id)
-      .single()
+      // CRITICAL: Server-side validation - fetch user profile and check tier/quota
+      const profile = await db.profiles.findById(authReq.user.id)
 
-    if (profileError || !profile) {
-      console.error('Failed to fetch user profile:', profileError)
-      return NextResponse.json({ error: 'User profile not found' }, { status: 404 })
-    }
+      if (!profile) {
+        console.error('Failed to fetch user profile')
+        return NextResponse.json({ error: 'User profile not found' }, { status: 404 })
+      }
 
     const tier = profile.subscription_tier as 'free' | 'pro' | 'team' | 'enterprise'
 
@@ -56,10 +54,7 @@ export async function POST(req: NextRequest) {
       })
 
       // Mark recording as failed
-      await supabase
-        .from('recordings')
-        .update({ status: 'failed' })
-        .eq('id', recordingId)
+      await db.recordings.updateStatus(recordingId, 'failed', 0)
 
       return NextResponse.json(
         { error: 'File uploads require Pro tier or higher. Please upgrade your subscription.' },
@@ -89,10 +84,7 @@ export async function POST(req: NextRequest) {
       })
 
       // Mark recording as failed
-      await supabase
-        .from('recordings')
-        .update({ status: 'failed' })
-        .eq('id', recordingId)
+      await db.recordings.updateStatus(recordingId, 'failed', 0)
 
       return NextResponse.json(
         {
@@ -114,10 +106,7 @@ export async function POST(req: NextRequest) {
       })
 
       // Mark recording as failed
-      await supabase
-        .from('recordings')
-        .update({ status: 'failed' })
-        .eq('id', recordingId)
+      await db.recordings.updateStatus(recordingId, 'failed', 0)
 
       return NextResponse.json(
         {
@@ -130,25 +119,17 @@ export async function POST(req: NextRequest) {
     }
 
     // Update status to processing
-    await supabase
-      .from('recordings')
-      .update({ status: 'processing', processing_progress: 10 })
-      .eq('id', recordingId)
+    await db.recordings.updateStatus(recordingId, 'processing', 10)
 
-    // Download audio from Supabase Storage
-    const { data: audioData, error: downloadError } = await supabase.storage
-      .from('recordings')
-      .download(recording.storage_path)
+    // Download audio from local storage
+    const { data: audioData, error: downloadError } = await LocalStorage.download(recording.storage_path)
 
     if (downloadError || !audioData) {
       throw new Error('Failed to download audio')
     }
 
     // Update progress
-    await supabase
-      .from('recordings')
-      .update({ processing_progress: 30 })
-      .eq('id', recordingId)
+    await db.recordings.updateProgress(recordingId, 30)
 
     // Transcribe with Whisper
     const audioFile = new File([audioData], 'recording.webm', { type: 'audio/webm' })
@@ -163,10 +144,7 @@ export async function POST(req: NextRequest) {
     console.log('Whisper raw text preview:', transcription.text.substring(0, 200))
 
     // Update progress
-    await supabase
-      .from('recordings')
-      .update({ processing_progress: 50 })
-      .eq('id', recordingId)
+    await db.recordings.updateProgress(recordingId, 50)
 
     // User preferences already fetched during validation
     const userSettings = profile?.settings as any || {}
@@ -216,26 +194,17 @@ ${transcription.text}`
     console.log('Cleaned text preview:', cleanedText.substring(0, 200))
 
     // Update progress
-    await supabase
-      .from('recordings')
-      .update({ processing_progress: 70 })
-      .eq('id', recordingId)
+    await db.recordings.updateProgress(recordingId, 70)
 
     // Save transcription
-    const { data: transcriptionRecord } = await supabase
-      .from('transcriptions')
-      .insert([
-        {
-          recording_id: recordingId,
-          raw_text: transcription.text,
-          raw_segments: transcription.segments || [],
-          cleaned_text: cleanedText,
-          language: transcription.language,
-          word_count: cleanedText.split(' ').length,
-        },
-      ])
-      .select()
-      .single()
+    const transcriptionRecord = await db.transcriptions.create({
+      recording_id: recordingId,
+      raw_text: transcription.text,
+      raw_segments: transcription.segments || [],
+      cleaned_text: cleanedText,
+      language: transcription.language,
+      word_count: cleanedText.split(' ').length,
+    })
 
     // Extract structured information based on mode
     let outcomes: any
@@ -336,10 +305,7 @@ ${transcription.text}`
     console.log('Final outcomes object:', JSON.stringify(outcomes, null, 2))
 
     // Update progress
-    await supabase
-      .from('recordings')
-      .update({ processing_progress: 85 })
-      .eq('id', recordingId)
+    await db.recordings.updateProgress(recordingId, 85)
 
     // Generate smart title using Claude
     let smartTitle = `${recording.mode === 'meeting' ? 'Meeting' : 'Brainstorm'} - ${new Date().toLocaleDateString()}`
@@ -436,15 +402,11 @@ ${cleanedText.substring(0, 500)}`
       }
     }, null, 2))
 
-    const { data: note, error: noteError } = await supabase
-      .from('notes')
-      .insert([noteData])
-      .select()
-      .single()
+    const note = await db.notes.create(noteData)
 
-    if (noteError) {
-      console.error('Error creating note:', noteError)
-      throw new Error(`Failed to create note: ${noteError.message}`)
+    if (!note) {
+      console.error('Error creating note')
+      throw new Error('Failed to create note')
     }
 
     console.log('Note created successfully with ID:', note.id)
@@ -453,16 +415,8 @@ ${cleanedText.substring(0, 500)}`
     if (isBrainstorming && noteEmbedding) {
       try {
         console.log('Saving embedding for idea evolution tracking...')
-        const { error: embeddingError } = await supabase
-          .from('notes')
-          .update({ embedding: noteEmbedding })
-          .eq('id', note.id)
-
-        if (embeddingError) {
-          console.error('Failed to save embedding:', embeddingError)
-        } else {
-          console.log('Embedding saved successfully for note:', note.id)
-        }
+        await db.notes.update(note.id, { embedding: noteEmbedding })
+        console.log('Embedding saved successfully for note:', note.id)
       } catch (error) {
         console.error('Error saving embedding:', error)
         // Don't fail the entire process if embedding save fails
@@ -494,46 +448,38 @@ ${cleanedText.substring(0, 500)}`
 
       console.log('Inserting action items:', JSON.stringify(actionItemsToInsert, null, 2))
 
-      const { error: actionItemsError } = await supabase.from('action_items').insert(actionItemsToInsert)
-
-      if (actionItemsError) {
-        console.error('Error creating action items:', actionItemsError)
-      } else {
+      try {
+        await db.actionItems.createMany(actionItemsToInsert)
         console.log(`${isBrainstorming ? 'Next steps' : 'Action items'} created successfully`)
+      } catch (error) {
+        console.error('Error creating action items:', error)
       }
     } else {
       console.log(`No ${isBrainstorming ? 'next steps' : 'action items'} to create`)
     }
 
     // Log usage
-    await supabase.from('usage_logs').insert([
-      {
-        user_id: recording.user_id,
-        resource_type: 'transcription',
-        units_consumed: recording.duration || 1,
-        recording_id: recordingId,
-      },
-    ])
+    await db.usageLogs.create({
+      user_id: recording.user_id,
+      resource_type: 'transcription',
+      units_consumed: recording.duration || 1,
+      recording_id: recordingId,
+    })
 
     // Update user's minutes_used
     const minutesToAdd = Math.ceil((recording.duration || 0) / 60) // Convert seconds to minutes
 
-    await supabase.rpc('increment_minutes_used', {
-      user_id: recording.user_id,
-      minutes: minutesToAdd
-    })
+    await db.profiles.incrementMinutesUsed(recording.user_id, minutesToAdd)
 
     console.log(`Updated minutes_used for user ${recording.user_id}: +${minutesToAdd} minutes`)
 
     // Mark as completed
-    await supabase
-      .from('recordings')
-      .update({ status: 'completed', processing_progress: 100 })
-      .eq('id', recordingId)
+    await db.recordings.updateStatus(recordingId, 'completed', 100)
 
     return NextResponse.json({ success: true, noteId: note.id })
-  } catch (error: any) {
-    console.error('Transcription error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
+    } catch (error: any) {
+      console.error('Transcription error:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+  })
 }

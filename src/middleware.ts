@@ -1,74 +1,62 @@
-// Rename this file to `proxy.ts` as the `middleware` convention is deprecated.
+// Edge-compatible middleware for JWT authentication
+import { NextResponse, type NextRequest } from 'next/server';
+import { jwtVerify } from 'jose';
 
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+// Get JWT secret as Uint8Array for jose
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET || 'fallback-secret-change-in-production';
+  return new TextEncoder().encode(secret);
+};
+
+interface UserPayload {
+  sub: string;
+  email: string;
+}
+
+async function verifyToken(token: string): Promise<UserPayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, getJwtSecret());
+    if (payload.type !== 'access') return null;
+    return {
+      sub: payload.sub as string,
+      email: payload.email as string,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
+  const accessToken = request.cookies.get('access_token')?.value;
 
-  console.log('Middleware request path:', request.nextUrl.pathname)
-  try {
-    console.log('Request cookies:', request.cookies.getAll())
-  } catch (err) {
-    console.log('Could not read request.cookies.getAll():', err)
-  }
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
-          response = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
-
-  try {
-    const { data: { user }, error } = await supabase.auth.getUser()
-
-    console.log('Middleware user:', user)
-    if (error) {
-      console.error('Supabase auth error in middleware:', error.message)
-      return response
-    }
-
-    // Protect dashboard routes
-    if (request.nextUrl.pathname.startsWith('/dashboard')) {
-      if (!user) {
-        console.log('Redirecting to /login due to missing user')
-        return NextResponse.redirect(new URL('/login', request.url))
-      } else {
-        console.log('User authenticated, allowing access to /dashboard')
-      }
-    }
-
-    // Redirect authenticated users away from auth pages (except reset-password which needs auth)
-    if ((request.nextUrl.pathname.startsWith('/login') ||
-         request.nextUrl.pathname.startsWith('/signup') ||
-         request.nextUrl.pathname.startsWith('/forgot-password')) && user) {
-      console.log('Redirecting to /dashboard for authenticated user')
-      return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
-  } catch (error) {
-    console.error('Middleware error:', error)
-    // On any error, let the request through
+  let user: UserPayload | null = null;
+  if (accessToken) {
+    user = await verifyToken(accessToken);
   }
 
-  return response
+  const { pathname } = request.nextUrl;
+
+  // Protect dashboard routes
+  if (pathname.startsWith('/dashboard')) {
+    if (!user) {
+      console.log('Middleware: Redirecting to /login - no authenticated user');
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+    console.log('Middleware: User authenticated for dashboard:', user.email);
+  }
+
+  // Redirect authenticated users away from auth pages (except reset-password)
+  if (
+    (pathname.startsWith('/login') ||
+      pathname.startsWith('/signup') ||
+      pathname.startsWith('/forgot-password')) &&
+    user
+  ) {
+    console.log('Middleware: Redirecting authenticated user to /dashboard');
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
@@ -79,4 +67,4 @@ export const config = {
     '/forgot-password',
     '/reset-password',
   ],
-}
+};

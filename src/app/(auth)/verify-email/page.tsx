@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { verifyEmail, resendVerificationEmail, getCurrentUser } from '@/lib/auth/client'
 import Link from 'next/link'
 import Logo from '@/components/ui/Logo'
 import { CheckCircle, XCircle, Loader2, Mail } from 'lucide-react'
@@ -13,25 +13,20 @@ function VerifyEmailContent() {
   const [email, setEmail] = useState('')
   const router = useRouter()
   const searchParams = useSearchParams()
-  const supabase = createClient()
 
   useEffect(() => {
     const checkVerification = async () => {
       // Check if there's a token in the URL (from email link)
       const token = searchParams.get('token')
-      const type = searchParams.get('type')
 
-      if (token && type === 'email') {
+      if (token) {
         setStatus('verifying')
         try {
-          const { error } = await supabase.auth.verifyOtp({
-            token_hash: token,
-            type: 'email',
-          })
+          const result = await verifyEmail(token)
 
-          if (error) {
+          if (result.error) {
             setStatus('error')
-            setMessage(error.message)
+            setMessage(result.error)
           } else {
             setStatus('success')
             setMessage('Your email has been verified!')
@@ -46,10 +41,10 @@ function VerifyEmailContent() {
         }
       } else {
         // No token - show pending state
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          setEmail(user.email || '')
-          if (user.email_confirmed_at) {
+        const result = await getCurrentUser()
+        if (result.user) {
+          setEmail(result.user.email)
+          if (result.user.emailVerified) {
             setStatus('success')
             setMessage('Your email is already verified!')
           } else {
@@ -63,19 +58,16 @@ function VerifyEmailContent() {
     }
 
     checkVerification()
-  }, [searchParams, supabase, router])
+  }, [searchParams, router])
 
   const handleResendEmail = async () => {
     setStatus('verifying')
     try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: email,
-      })
+      const result = await resendVerificationEmail(email)
 
-      if (error) {
+      if (result.error) {
         setStatus('error')
-        setMessage(error.message)
+        setMessage(result.error)
       } else {
         setStatus('pending')
         setMessage('Verification email sent! Check your inbox.')

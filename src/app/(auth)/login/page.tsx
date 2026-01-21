@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { login } from '@/lib/auth/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Logo from '@/components/ui/Logo'
@@ -12,20 +12,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
-  const supabase = createClient()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    const result = await login(email, password)
 
-    if (error) {
-      setError(error.message)
+    if (result.error) {
+      setError(result.error)
       setLoading(false)
     } else {
       router.push('/dashboard')
@@ -108,7 +104,7 @@ export default function LoginPage() {
           </button>
 
           <div className="text-center text-sm">
-            <span className="text-neutral-600">Don't have an account? </span>
+            <span className="text-neutral-600">Don&apos;t have an account? </span>
             <Link href="/signup" className="font-medium text-primary-600 hover:text-primary-500">
               Sign up
             </Link>

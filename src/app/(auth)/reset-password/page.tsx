@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { resetPassword } from '@/lib/auth/client'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Logo from '@/components/ui/Logo'
 
@@ -13,23 +13,21 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null)
+  const [token, setToken] = useState<string | null>(null)
   const router = useRouter()
-  const supabase = createClient()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Check if we have a valid session (user clicked the reset link)
-    const checkSession = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession()
-      
-      if (error || !session) {
-        setIsValidToken(false)
-      } else {
-        setIsValidToken(true)
-      }
-    }
+    // Check if we have a valid token from URL
+    const resetToken = searchParams.get('token')
 
-    checkSession()
-  }, [supabase.auth])
+    if (!resetToken) {
+      setIsValidToken(false)
+    } else {
+      setIsValidToken(true)
+      setToken(resetToken)
+    }
+  }, [searchParams])
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,19 +48,22 @@ export default function ResetPasswordPage() {
       return
     }
 
-    const { error } = await supabase.auth.updateUser({
-      password: password,
-    })
+    if (!token) {
+      setError('Invalid reset token')
+      setLoading(false)
+      return
+    }
 
-    if (error) {
-      setError(error.message)
+    const result = await resetPassword(token, password)
+
+    if (result.error) {
+      setError(result.error)
       setLoading(false)
     } else {
       setSuccess(true)
-      // Redirect to dashboard after 2 seconds
+      // Redirect to login after 2 seconds
       setTimeout(() => {
-        router.push('/dashboard')
-        router.refresh()
+        router.push('/login')
       }, 2000)
     }
   }

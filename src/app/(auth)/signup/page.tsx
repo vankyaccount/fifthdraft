@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { signup } from '@/lib/auth/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Logo from '@/components/ui/Logo'
@@ -13,50 +13,26 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
-  const supabase = createClient()
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
-        },
-      },
-    })
+    const result = await signup(email, password, fullName)
 
-    if (signUpError) {
-      setError(signUpError.message)
+    if (result.error) {
+      setError(result.error)
       setLoading(false)
       return
     }
 
-    if (data.user) {
-      // Create profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([
-          {
-            id: data.user.id,
-            email: data.user.email!,
-            full_name: fullName,
-            subscription_tier: 'free',
-            minutes_quota: 30,
-          },
-        ])
-
-      if (profileError) {
-        console.error('Profile creation error:', profileError)
-      }
-
+    if (result.needsVerification) {
+      router.push('/verify-email')
+    } else {
       router.push('/onboarding')
-      router.refresh()
     }
+    router.refresh()
   }
 
   return (
