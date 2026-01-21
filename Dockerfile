@@ -3,11 +3,14 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Ensure devDependencies are installed (not production mode during build)
+ENV NODE_ENV=development
+
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies with both production and development packages
-RUN npm install
+# Install ALL dependencies including devDependencies
+RUN npm install --include=dev
 
 # Copy source code
 COPY . .
