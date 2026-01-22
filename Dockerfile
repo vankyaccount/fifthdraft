@@ -4,27 +4,26 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Build arguments for Next.js public environment variables (required at build time)
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_APP_URL
 
 # Set them as environment variables for the build
-ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 
 # Copy package files
 COPY package*.json ./
 
-# Install ALL dependencies including devDependencies
-RUN npm ci
+# Force install ALL dependencies including devDependencies
+# NODE_ENV=development ensures npm ci doesn't skip devDependencies
+ENV NODE_ENV=development
+RUN npm ci --include=dev
 
 # Copy source code
 COPY . .
 
-# Build the Next.js application in production mode
+# Build the Next.js application
+ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
