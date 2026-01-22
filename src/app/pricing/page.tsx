@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { getCurrentUser } from '@/lib/auth/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Check, Sparkles, Loader2 } from 'lucide-react'
@@ -32,30 +32,34 @@ export default function PricingPage() {
     company: ''
   })
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
     async function loadProfile() {
-      const { data: { user } } = await supabase.auth.getUser()
+      const result = await getCurrentUser()
 
       // Allow non-logged in users to view pricing
-      if (!user) {
+      if (!result.user) {
         setLoading(false)
         return
       }
 
-      const { data } = await supabase
-        .from('profiles')
-        .select('subscription_tier, stripe_customer_id')
-        .eq('id', user.id)
-        .single()
+      // Fetch profile from API
+      const response = await fetch('/api/auth/me')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.profile) {
+          setProfile({
+            subscription_tier: data.profile.subscription_tier,
+            stripe_customer_id: data.profile.stripe_customer_id
+          })
+        }
+      }
 
-      setProfile(data)
       setLoading(false)
     }
 
     loadProfile()
-  }, [supabase, router])
+  }, [router])
 
   const handleCheckout = async (priceType: 'pro_monthly' | 'pro_yearly') => {
     setCheckoutLoading(priceType)
@@ -104,9 +108,10 @@ export default function PricingPage() {
     e.preventDefault()
     setWaitlistLoading(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      const result = await getCurrentUser()
+      if (!result.user) {
         alert('Please sign in to join the waitlist')
+        router.push('/login')
         return
       }
 
@@ -114,8 +119,8 @@ export default function PricingPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: user.id,
-          email: user.email,
+          user_id: result.user.id,
+          email: result.user.email,
           feedback: waitlistForm.feedback,
           use_case: waitlistForm.use_case,
           company: waitlistForm.company,
