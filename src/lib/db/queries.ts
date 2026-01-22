@@ -109,6 +109,13 @@ export const recordings = {
     );
   },
 
+  updateProgress: async (id: string, progress: number): Promise<void> => {
+    await query(
+      `UPDATE recordings SET processing_progress = $1, updated_at = NOW() WHERE id = $2`,
+      [progress, id]
+    );
+  },
+
   update: async (id: string, data: Partial<Recording>): Promise<Recording | null> => {
     const keys = Object.keys(data);
     if (keys.length === 0) return null;

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { withAuth, type AuthenticatedRequest } from '@/lib/auth'
+import { withAuth, type AuthenticatedRequest, AuthService } from '@/lib/auth'
 import { db } from '@/lib/db/queries'
 import { LocalStorage } from '@/lib/storage/local'
 import Stripe from 'stripe'
@@ -42,12 +42,12 @@ export async function POST(req: NextRequest) {
 
           // Delete files from local storage
           if (storagePaths.length > 0) {
-            const { error: deleteError } = await LocalStorage.deleteMany(storagePaths)
+            const { deleted, errors: deleteErrors } = await LocalStorage.deleteMany(storagePaths)
 
-            if (deleteError) {
-              console.error('Error deleting storage files:', deleteError)
+            if (deleteErrors.length > 0) {
+              console.error('Error deleting storage files:', deleteErrors)
             } else {
-              console.log(`Deleted ${storagePaths.length} audio files from storage`)
+              console.log(`Deleted ${deleted} audio files from storage`)
             }
           }
         }
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
       // Step 3: Delete user account and all related data
       // This cascades to delete profiles and all related data via foreign key constraints
-      await db.profiles.delete(authReq.user.id)
+      await AuthService.deleteAccount(authReq.user.id)
 
       // Success - account completely deleted
       return NextResponse.json({

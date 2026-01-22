@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
     await db.recordings.updateProgress(recordingId, 30)
 
     // Transcribe with Whisper
-    const audioFile = new File([audioData], 'recording.webm', { type: 'audio/webm' })
+    const audioFile = new File([new Uint8Array(audioData)], 'recording.webm', { type: 'audio/webm' })
     console.log('Starting Whisper transcription for recording:', recordingId)
     const transcription = await openai.audio.transcriptions.create({
       file: audioFile,
@@ -197,10 +197,10 @@ ${transcription.text}`
     await db.recordings.updateProgress(recordingId, 70)
 
     // Save transcription
-    const transcriptionRecord = await db.transcriptions.create({
+    await db.transcriptions.create({
       recording_id: recordingId,
       raw_text: transcription.text,
-      raw_segments: transcription.segments || [],
+      raw_segments: (transcription.segments || []) as unknown as Record<string, unknown>[],
       cleaned_text: cleanedText,
       language: transcription.language,
       word_count: cleanedText.split(' ').length,

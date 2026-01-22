@@ -38,11 +38,11 @@ export async function POST(request: NextRequest) {
       await db.proPlusWaitlist.create({
         user_id,
         email,
-        full_name: profile?.full_name || null,
+        full_name: profile?.full_name,
         status: 'pending',
-        feedback: feedback || null,
-        use_case: use_case || null,
-        company: company || null,
+        feedback: feedback || undefined,
+        use_case: use_case || undefined,
+        company: company || undefined,
       })
 
       return NextResponse.json(

@@ -36,7 +36,7 @@ export async function GET(
     // Get content type
     const contentType = LocalStorage.getContentType(storagePath);
 
-    return new NextResponse(data, {
+    return new NextResponse(new Uint8Array(data), {
       headers: {
         'Content-Type': contentType,
         'Content-Length': data.length.toString(),

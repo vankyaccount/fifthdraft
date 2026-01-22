@@ -46,7 +46,7 @@ export interface Profile {
   role: 'user' | 'admin' | 'super_admin';
   stripe_customer_id?: string;
   stripe_subscription_id?: string;
-  subscription_status?: 'active' | 'canceled' | 'past_due' | 'trialing';
+  subscription_status?: 'active' | 'canceled' | 'past_due' | 'trialing' | 'incomplete' | 'incomplete_expired' | 'unpaid' | 'paused';
   minutes_used: number;
   minutes_quota: number;
   settings: Record<string, unknown>;
