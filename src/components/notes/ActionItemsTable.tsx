@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { Pencil, Trash2 } from 'lucide-react'
+import ActionItemEditModal from './ActionItemEditModal'
 
 interface ActionItem {
   id: string
@@ -11,6 +13,7 @@ interface ActionItem {
   due_date: string | null
   priority: string | null
   status: string
+  type?: 'task' | 'decision' | 'deadline'
 }
 
 interface ActionItemsTableProps {
@@ -21,6 +24,8 @@ interface ActionItemsTableProps {
 
 export default function ActionItemsTable({ noteId, initialItems, variant = 'meeting' }: ActionItemsTableProps) {
   const [items, setItems] = useState<ActionItem[]>(initialItems)
+  const [editingItem, setEditingItem] = useState<ActionItem | null>(null)
+  const [deletingItem, setDeletingItem] = useState<string | null>(null)
 
   const toggleStatus = async (itemId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
@@ -89,6 +94,40 @@ export default function ActionItemsTable({ noteId, initialItems, variant = 'meet
 
     await navigator.clipboard.writeText(JSON.stringify(linearData, null, 2))
     alert('Action items copied to clipboard! You can paste this into your Linear import tool.')
+  }
+
+  const handleEdit = (item: ActionItem) => {
+    setEditingItem(item)
+  }
+
+  const handleSaveEdit = (updatedItem: ActionItem) => {
+    setItems(items.map(item => item.id === updatedItem.id ? updatedItem : item))
+  }
+
+  const handleDelete = async (itemId: string) => {
+    if (!confirm('Are you sure you want to delete this action item?')) {
+      return
+    }
+
+    setDeletingItem(itemId)
+
+    try {
+      const response = await fetch(`/api/action-items/${itemId}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete action item')
+      }
+
+      // Remove from local state
+      setItems(items.filter(item => item.id !== itemId))
+    } catch (error) {
+      console.error('Error deleting action item:', error)
+      alert('Failed to delete action item. Please try again.')
+    } finally {
+      setDeletingItem(null)
+    }
   }
 
   if (items.length === 0) {
@@ -161,6 +200,9 @@ export default function ActionItemsTable({ noteId, initialItems, variant = 'meet
             <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Priority
             </th>
+            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Actions
+            </th>
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
@@ -207,10 +249,37 @@ export default function ActionItemsTable({ noteId, initialItems, variant = 'meet
                   <span className="text-sm text-gray-500">-</span>
                 )}
               </td>
+              <td className="px-3 py-4 whitespace-nowrap">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleEdit(item)}
+                    className="text-indigo-600 hover:text-indigo-900 transition-colors"
+                    title="Edit action item"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    disabled={deletingItem === item.id}
+                    className="text-red-600 hover:text-red-900 transition-colors disabled:opacity-50"
+                    title="Delete action item"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+
+      {editingItem && (
+        <ActionItemEditModal
+          actionItem={editingItem}
+          onClose={() => setEditingItem(null)}
+          onSave={handleSaveEdit}
+        />
+      )}
     </div>
   )
 }

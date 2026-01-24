@@ -25,11 +25,19 @@ export default function PricingPage() {
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null)
   const [billingLoading, setBillingLoading] = useState(false)
   const [showWaitlistModal, setShowWaitlistModal] = useState(false)
+  const [showRaasWaitlistModal, setShowRaasWaitlistModal] = useState(false)
   const [waitlistLoading, setWaitlistLoading] = useState(false)
+  const [raasWaitlistLoading, setRaasWaitlistLoading] = useState(false)
   const [waitlistForm, setWaitlistForm] = useState({
     feedback: '',
     use_case: '',
     company: ''
+  })
+  const [raasWaitlistForm, setRaasWaitlistForm] = useState({
+    feedback: '',
+    use_case: '',
+    company: '',
+    expected_volume: ''
   })
   const router = useRouter()
 
@@ -140,6 +148,44 @@ export default function PricingPage() {
       alert(error.message || 'Failed to join waitlist')
     } finally {
       setWaitlistLoading(false)
+    }
+  }
+
+  const handleRaasWaitlistSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setRaasWaitlistLoading(true)
+    try {
+      const result = await getCurrentUser()
+      if (!result.user) {
+        alert('Please sign in to join the waitlist')
+        router.push('/login')
+        return
+      }
+
+      const response = await fetch('/api/raas-waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          feedback: raasWaitlistForm.feedback,
+          use_case: raasWaitlistForm.use_case,
+          company: raasWaitlistForm.company,
+          expected_volume: raasWaitlistForm.expected_volume,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to join RAAS waitlist')
+      }
+
+      alert('Successfully joined the RAAS waitlist! Check your email for updates.')
+      setShowRaasWaitlistModal(false)
+      setRaasWaitlistForm({ feedback: '', use_case: '', company: '', expected_volume: '' })
+    } catch (error: any) {
+      alert(error.message || 'Failed to join waitlist')
+    } finally {
+      setRaasWaitlistLoading(false)
     }
   }
 
@@ -522,6 +568,104 @@ export default function PricingPage() {
           </div>
         </div>
 
+        {/* RAAS Section */}
+        <div id="raas" className="mt-20 scroll-mt-20">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-100 to-purple-100 px-4 py-2 rounded-full text-sm font-medium text-indigo-900 mb-4">
+              <Sparkles className="w-4 h-4" />
+              Coming Soon - Q2 2026
+            </div>
+            <h2 className="text-3xl font-bold text-neutral-900 mb-4">
+              RAAS: Result as a Service
+            </h2>
+            <p className="text-lg text-neutral-600 max-w-3xl mx-auto">
+              Transform your sessions into professional deliverables automatically. Perfect for agencies, consultants, and enterprise teams who need polished outputs ready to share with clients.
+            </p>
+          </div>
+
+          <div className="max-w-4xl mx-auto bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="p-8 md:p-12 text-white">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-3xl font-bold">RAAS Plan</h3>
+                <span className="text-2xl font-bold">Custom Pricing</span>
+              </div>
+
+              <p className="text-blue-100 mb-8">
+                Everything in Pro+ plus automated professional deliverables and white-label exports
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-lg mb-3">Automated Deliverables</h4>
+                  <ul className="space-y-3">
+                    <li className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">Project briefs and proposals generated automatically</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">Professional reports and documentation</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">Client-ready meeting summaries and action plans</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">Automated follow-up emails and communications</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-lg mb-3">Enterprise Features</h4>
+                  <ul className="space-y-3">
+                    <li className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">White-label exports with your branding</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">Custom deliverable templates and styles</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">Dedicated account manager and priority support</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">Priority AI processing and unlimited minutes</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 mb-8">
+                <h4 className="font-semibold mb-2">Perfect For:</h4>
+                <p className="text-sm text-blue-100">
+                  Consulting firms, agencies, research teams, product managers, and enterprise organizations that need professional deliverables from every meeting and brainstorming session.
+                </p>
+              </div>
+
+              {!profile ? (
+                <Link
+                  href="/signup"
+                  className="w-full py-3 px-4 rounded-lg font-medium bg-white text-indigo-900 hover:bg-blue-50 transition-colors text-center block"
+                >
+                  Join RAAS Waitlist
+                </Link>
+              ) : (
+                <button
+                  onClick={() => setShowRaasWaitlistModal(true)}
+                  className="w-full py-3 px-4 rounded-lg font-medium bg-white text-indigo-900 hover:bg-blue-50 transition-colors"
+                >
+                  Join RAAS Waitlist
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* CTA Section */}
         <div className="mt-16 text-center">
           <p className="text-neutral-600 mb-4">
@@ -607,6 +751,111 @@ export default function PricingPage() {
                   className="flex-1 py-2 px-4 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
                 >
                   {waitlistLoading ? (
+                    <span className="flex items-center justify-center">
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Joining...
+                    </span>
+                  ) : (
+                    'Join Waitlist'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* RAAS Waitlist Modal */}
+      {showRaasWaitlistModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8">
+            <h2 className="text-2xl font-bold text-neutral-900 mb-2">
+              Join RAAS Waitlist
+            </h2>
+            <p className="text-neutral-600 mb-6">
+              Tell us about your needs for professional deliverables and we'll prioritize your access.
+            </p>
+
+            <form onSubmit={handleRaasWaitlistSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  Use Case <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  required
+                  placeholder="e.g., Client reports, project proposals, consulting deliverables"
+                  value={raasWaitlistForm.use_case}
+                  onChange={(e) =>
+                    setRaasWaitlistForm({ ...raasWaitlistForm, use_case: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 resize-none"
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  Company
+                </label>
+                <input
+                  type="text"
+                  placeholder="Your company or organization"
+                  value={raasWaitlistForm.company}
+                  onChange={(e) =>
+                    setRaasWaitlistForm({ ...raasWaitlistForm, company: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  Expected Monthly Volume
+                </label>
+                <select
+                  value={raasWaitlistForm.expected_volume}
+                  onChange={(e) =>
+                    setRaasWaitlistForm({ ...raasWaitlistForm, expected_volume: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                >
+                  <option value="">Select volume</option>
+                  <option value="1-10">1-10 deliverables/month</option>
+                  <option value="11-50">11-50 deliverables/month</option>
+                  <option value="51-100">51-100 deliverables/month</option>
+                  <option value="100+">100+ deliverables/month</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  Additional Feedback
+                </label>
+                <textarea
+                  placeholder="What features are most important to you?"
+                  value={raasWaitlistForm.feedback}
+                  onChange={(e) =>
+                    setRaasWaitlistForm({ ...raasWaitlistForm, feedback: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600 resize-none"
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowRaasWaitlistModal(false)}
+                  className="flex-1 py-2 px-4 border border-neutral-300 text-neutral-700 rounded-lg font-medium hover:border-neutral-400 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={raasWaitlistLoading}
+                  className="flex-1 py-2 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition-colors disabled:opacity-50"
+                >
+                  {raasWaitlistLoading ? (
                     <span className="flex items-center justify-center">
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
                       Joining...

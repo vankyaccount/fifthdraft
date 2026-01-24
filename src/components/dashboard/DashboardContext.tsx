@@ -1,8 +1,11 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import type { User } from '@supabase/supabase-js'
+
+interface User {
+  id: string
+  email: string
+}
 
 interface Profile {
   id: string
@@ -39,15 +42,16 @@ export function DashboardProvider({
   const refreshProfile = useCallback(async () => {
     if (!user) return
 
-    const supabase = createClient()
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single()
-
-    if (!error && data) {
-      setProfile(data)
+    try {
+      const response = await fetch('/api/auth/me')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.profile) {
+          setProfile(data.profile)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to refresh profile:', error)
     }
   }, [user])
 

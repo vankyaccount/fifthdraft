@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import TagFilter from './TagFilter'
 import FolderSidebar from './FolderSidebar'
+import SearchBar from './SearchBar'
+import { Loader2 } from 'lucide-react'
 
 interface Note {
   id: string
@@ -26,8 +28,62 @@ interface NotesListWithFilterProps {
 export default function NotesListWithFilter({ notes }: NotesListWithFilterProps) {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<Note[] | null>(null)
+  const [isSearching, setIsSearching] = useState(false)
+
+  // Handle search with API
+  const handleSearch = useCallback(async (query: string) => {
+    setSearchQuery(query)
+
+    if (!query.trim()) {
+      setSearchResults(null)
+      return
+    }
+
+    setIsSearching(true)
+    try {
+      const params = new URLSearchParams({ q: query })
+      if (selectedTags.length > 0) {
+        params.set('tags', selectedTags.join(','))
+      }
+
+      const response = await fetch(`/api/notes/search?${params.toString()}`)
+      if (!response.ok) {
+        throw new Error('Search failed')
+      }
+
+      const data = await response.json()
+      setSearchResults(data.notes)
+    } catch (error) {
+      console.error('Search error:', error)
+      setSearchResults([])
+    } finally {
+      setIsSearching(false)
+    }
+  }, [selectedTags])
+
+  // Clear search when filters change
+  useEffect(() => {
+    if (searchQuery) {
+      handleSearch(searchQuery)
+    }
+  }, [selectedTags, searchQuery, handleSearch])
 
   const filteredNotes = useMemo(() => {
+    // Use search results if searching
+    if (searchQuery && searchResults !== null) {
+      let filtered = searchResults
+
+      // Filter by folder (search results don't include folder filter)
+      if (selectedFolderId !== null) {
+        filtered = filtered.filter(note => note.folder_id === selectedFolderId)
+      }
+
+      return filtered
+    }
+
+    // Otherwise use local filtering
     let filtered = notes
 
     // Filter by folder
@@ -44,7 +100,7 @@ export default function NotesListWithFilter({ notes }: NotesListWithFilterProps)
     }
 
     return filtered
-  }, [notes, selectedTags, selectedFolderId])
+  }, [notes, selectedTags, selectedFolderId, searchQuery, searchResults])
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -58,18 +114,34 @@ export default function NotesListWithFilter({ notes }: NotesListWithFilterProps)
       </div>
 
       {/* Main Notes List */}
-      <div className="lg:col-span-3">
+      <div className="lg:col-span-3 space-y-4">
+        {/* Search Bar */}
+        <SearchBar
+          onSearch={handleSearch}
+          placeholder="Search in title, summary, or content..."
+        />
 
-      {filteredNotes.length === 0 ? (
+      {isSearching ? (
+        <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+          <Loader2 className="mx-auto h-12 w-12 text-indigo-600 animate-spin" />
+          <p className="mt-4 text-sm text-gray-600">Searching notes...</p>
+        </div>
+      ) : filteredNotes.length === 0 ? (
         <div className="bg-white rounded-lg shadow-sm p-12 text-center">
           <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
           </svg>
           <h3 className="mt-2 text-sm font-medium text-gray-900">
-            {selectedTags.length > 0 ? 'No notes match these tags' : 'No notes yet'}
+            {searchQuery
+              ? 'No results found'
+              : selectedTags.length > 0
+              ? 'No notes match these tags'
+              : 'No notes yet'}
           </h3>
           <p className="mt-1 text-sm text-gray-500">
-            {selectedTags.length > 0
+            {searchQuery
+              ? 'Try a different search term or clear your search.'
+              : selectedTags.length > 0
               ? 'Try selecting different tags or clearing filters.'
               : 'Get started by recording your first audio note.'}
           </p>
