@@ -15,21 +15,35 @@ export interface SendEmailOptions {
 export class EmailService {
   static async sendEmail({ to, subject, html }: SendEmailOptions): Promise<{ success: boolean; error?: string }> {
     try {
+      console.log('Email service config:', {
+        hasApiKey: !!process.env.RESEND_API_KEY,
+        fromEmail: FROM_EMAIL,
+        toEmail: to,
+        subject,
+      });
+
       if (!process.env.RESEND_API_KEY) {
         console.warn('RESEND_API_KEY not configured - email not sent');
         return { success: false, error: 'Email service not configured' };
       }
 
-      await resend.emails.send({
+      const result = await resend.emails.send({
         from: FROM_EMAIL,
         to,
         subject,
         html,
       });
 
+      console.log('Email sent successfully:', { to, subject, id: result.data?.id });
       return { success: true };
     } catch (error: unknown) {
-      console.error('Email send error:', error);
+      console.error('Email send error:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        to,
+        subject,
+      });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to send email'

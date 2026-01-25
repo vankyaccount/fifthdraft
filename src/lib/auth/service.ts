@@ -94,8 +94,15 @@ export class AuthService {
         );
       });
 
-      // Send verification email
-      await EmailService.sendVerificationEmail(email, verifyToken);
+      // Send verification email (non-blocking - don't fail signup if email fails)
+      try {
+        const emailResult = await EmailService.sendVerificationEmail(email, verifyToken);
+        if (!emailResult.success) {
+          console.error('Failed to send verification email:', emailResult.error);
+        }
+      } catch (emailError) {
+        console.error('Email send error (non-blocking):', emailError);
+      }
 
       return { userId, needsVerification: true };
     } catch (error: unknown) {
@@ -224,8 +231,15 @@ export class AuthService {
         [resetToken, expiry, email.toLowerCase()]
       );
 
-      // Send password reset email
-      await EmailService.sendPasswordResetEmail(email, resetToken);
+      // Send password reset email (non-blocking - don't fail if email fails)
+      try {
+        const emailResult = await EmailService.sendPasswordResetEmail(email, resetToken);
+        if (!emailResult.success) {
+          console.error('Failed to send password reset email:', emailResult.error);
+        }
+      } catch (emailError) {
+        console.error('Password reset email error (non-blocking):', emailError);
+      }
 
       return { success: true };
     } catch (error: unknown) {
@@ -297,8 +311,15 @@ export class AuthService {
         return { success: false, error: 'User not found or already verified' };
       }
 
-      // Send verification email
-      await EmailService.sendVerificationEmail(email, verifyToken);
+      // Send verification email (non-blocking - don't fail if email fails)
+      try {
+        const emailResult = await EmailService.sendVerificationEmail(email, verifyToken);
+        if (!emailResult.success) {
+          console.error('Failed to resend verification email:', emailResult.error);
+        }
+      } catch (emailError) {
+        console.error('Resend verification email error (non-blocking):', emailError);
+      }
 
       return { success: true };
     } catch (error: unknown) {
