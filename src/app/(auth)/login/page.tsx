@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { login } from '@/lib/auth/client'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Logo from '@/components/ui/Logo'
 
@@ -11,7 +10,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -24,8 +22,8 @@ export default function LoginPage() {
       setError(result.error)
       setLoading(false)
     } else {
-      router.push('/dashboard')
-      router.refresh()
+      // Use window.location for full page navigation to avoid Server Action issues
+      window.location.href = '/dashboard'
     }
   }
 

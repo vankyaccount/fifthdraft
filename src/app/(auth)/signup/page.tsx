@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { signup } from '@/lib/auth/client'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Logo from '@/components/ui/Logo'
 
@@ -12,7 +11,6 @@ export default function SignupPage() {
   const [fullName, setFullName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,11 +26,11 @@ export default function SignupPage() {
     }
 
     if (result.needsVerification) {
-      router.push(`/verify-email?email=${encodeURIComponent(email)}`)
+      // Use window.location for full page navigation to avoid Server Action issues
+      window.location.href = `/verify-email?email=${encodeURIComponent(email)}`
     } else {
-      router.push('/onboarding')
+      window.location.href = '/onboarding'
     }
-    router.refresh()
   }
 
   return (
