@@ -78,10 +78,10 @@ export class AuthService {
       const verifyToken = crypto.randomBytes(32).toString('hex');
 
       await transaction(async (client) => {
-        // Create auth user
+        // Create auth user (auto-verified until email system is implemented)
         await client.query(
-          `INSERT INTO auth_users (id, email, password_hash, verify_token, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, NOW(), NOW())`,
+          `INSERT INTO auth_users (id, email, password_hash, verify_token, email_verified, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, true, NOW(), NOW())`,
           [userId, email.toLowerCase(), passwordHash, verifyToken]
         );
 
@@ -93,10 +93,10 @@ export class AuthService {
         );
       });
 
-      // TODO: Send verification email
+      // TODO: Send verification email (currently auto-verifying users)
       // await sendVerificationEmail(email, verifyToken);
 
-      return { userId, needsVerification: true };
+      return { userId, needsVerification: false };
     } catch (error: unknown) {
       console.error('Signup error details:', {
         error,
