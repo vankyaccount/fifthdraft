@@ -4,17 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Pencil, Trash2 } from 'lucide-react'
 import ActionItemEditModal from './ActionItemEditModal'
-
-interface ActionItem {
-  id: string
-  title: string
-  description: string | null
-  assignee_name: string | null
-  due_date: string | null
-  priority: string | null
-  status: string
-  type?: 'task' | 'decision' | 'deadline'
-}
+import type { ActionItem } from '@/lib/db/queries'
 
 interface ActionItemsTableProps {
   noteId: string
@@ -32,7 +22,7 @@ export default function ActionItemsTable({ noteId, initialItems, variant = 'meet
 
     // Optimistic update
     setItems(items.map(item =>
-      item.id === itemId ? { ...item, status: newStatus } : item
+      item.id === itemId ? { ...item, status: newStatus as ActionItem['status'] } : item
     ))
 
     const supabase = createClient()
@@ -45,7 +35,7 @@ export default function ActionItemsTable({ noteId, initialItems, variant = 'meet
       console.error('Error updating action item:', error)
       // Revert on error
       setItems(items.map(item =>
-        item.id === itemId ? { ...item, status: currentStatus } : item
+        item.id === itemId ? { ...item, status: currentStatus as ActionItem['status'] } : item
       ))
       alert('Failed to update action item status')
     }

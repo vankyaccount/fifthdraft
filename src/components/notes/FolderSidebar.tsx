@@ -43,7 +43,7 @@ export default function FolderSidebar({ selectedFolderId, onFolderSelect }: Fold
       .order('position', { ascending: true })
 
     if (foldersData) {
-      const foldersWithCounts = foldersData.map(folder => ({
+      const foldersWithCounts = foldersData.map((folder: any) => ({
         ...folder,
         note_count: folder.notes?.[0]?.count || 0
       }))

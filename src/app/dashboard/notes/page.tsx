@@ -1,29 +1,18 @@
-import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import NotesListWithFilter from '@/components/notes/NotesListWithFilter'
+import { db } from '@/lib/db/queries'
 
 export default async function NotesPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await getCurrentUser()
 
   if (!user) {
     redirect('/login')
   }
 
   // Fetch all notes for the user
-  const { data: notes, error } = await supabase
-    .from('notes')
-    .select(`
-      *,
-      recording:recordings(duration)
-    `)
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    console.error('Error fetching notes:', error)
-  }
+  const notes = await db.notes.findByUserId(user.id, 100)
 
   const allNotes = notes || []
 
@@ -36,7 +25,7 @@ export default async function NotesPage() {
         </p>
       </div>
 
-      <NotesListWithFilter notes={allNotes} />
+      <NotesListWithFilter notes={allNotes as any} />
     </div>
   )
 }

@@ -30,9 +30,9 @@ export default function TagFilter({ selectedTags, onTagsChange }: TagFilterProps
 
     if (notes) {
       const tagCounts = new Map<string, number>()
-      notes.forEach(note => {
+      notes.forEach((note: any) => {
         if (note.tags && Array.isArray(note.tags)) {
-          note.tags.forEach(tag => {
+          note.tags.forEach((tag: string) => {
             tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1)
           })
         }

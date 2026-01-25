@@ -2,17 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { X, Loader2 } from 'lucide-react'
-
-interface ActionItem {
-  id: string
-  title: string
-  description?: string
-  assignee_name?: string
-  due_date?: string
-  priority?: 'low' | 'medium' | 'high' | 'urgent'
-  type?: 'task' | 'decision' | 'deadline'
-  status: 'pending' | 'in_progress' | 'completed' | 'canceled'
-}
+import type { ActionItem } from '@/lib/db/queries'
 
 interface ActionItemEditModalProps {
   actionItem: ActionItem

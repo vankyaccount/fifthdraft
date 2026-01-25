@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const { company, use_case, expected_volume, feedback } = body
 
     // Insert into raas_waitlist table
-    const { data: waitlistEntry, error: insertError } = await db.query(`
+    const insertResult = await db.query(`
       INSERT INTO raas_waitlist (
         user_id, email, company, use_case, expected_volume, feedback, status
       )
@@ -33,8 +33,8 @@ export async function POST(request: NextRequest) {
       feedback || null
     ])
 
-    if (insertError) {
-      console.error('Error inserting waitlist entry:', insertError)
+    if (!insertResult.rows || insertResult.rows.length === 0) {
+      console.error('Error inserting waitlist entry')
       return NextResponse.json(
         { error: 'Failed to join waitlist' },
         { status: 500 }

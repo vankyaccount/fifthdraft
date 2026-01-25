@@ -6,11 +6,12 @@ import type { Profile } from './types';
 
 /**
  * Get current authenticated user from cookies (for server components)
- * @returns User object or null if not authenticated
+ * @returns Object with user property (user can be null if not authenticated)
  */
-export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
+export async function getCurrentUser(): Promise<{ user: AuthenticatedUser | null }> {
   const cookieStore = await cookies();
-  return getServerUser(cookieStore);
+  const user = await getServerUser(cookieStore);
+  return { user };
 }
 
 /**
@@ -39,7 +40,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
  * @returns Authenticated user
  */
 export async function requireAuth(): Promise<AuthenticatedUser> {
-  const user = await getCurrentUser();
+  const { user } = await getCurrentUser();
   if (!user) {
     throw new Error('Authentication required');
   }

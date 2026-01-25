@@ -33,9 +33,9 @@ export default function TagInput({ noteId, initialTags, onTagsChange }: TagInput
 
       if (notes) {
         const allTags = new Set<string>()
-        notes.forEach(note => {
+        notes.forEach((note: any) => {
           if (note.tags && Array.isArray(note.tags)) {
-            note.tags.forEach(tag => allTags.add(tag))
+            note.tags.forEach((tag: string) => allTags.add(tag))
           }
         })
         setSuggestions(Array.from(allTags))
