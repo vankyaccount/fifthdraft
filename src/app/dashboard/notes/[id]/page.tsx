@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -10,37 +10,41 @@ import ProjectBriefDisplay from '@/components/notes/ProjectBriefDisplay'
 import TagInput from '@/components/notes/TagInput'
 import FolderSelector from '@/components/notes/FolderSelector'
 import { Sparkles, Lightbulb, ArrowRight, AlertCircle, HelpCircle, TrendingUp } from 'lucide-react'
+import { db } from '@/lib/db/queries'
 
 // Updated homepage description to emphasize AI-powered brainstorming and professional tools.
 
 export default async function NotePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await getCurrentUser()
 
   if (!user) {
     redirect('/login')
   }
 
-  // Fetch note with recording and action items
-  const { data: note, error } = await supabase
-    .from('notes')
-    .select(`
-      *,
-      recording:recordings(*),
-      action_items(*)
-    `)
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .single()
+  // Fetch note
+  const note = await db.notes.findByIdAndUserId(id, user.id)
 
-  if (error || !note) {
+  if (!note) {
     notFound()
   }
 
+  // Fetch recording if exists
+  const recording = note.recording_id ? await db.recordings.findById(note.recording_id) : null
+
+  // Fetch action items
+  const allActionItems = await db.actionItems.findByNoteId(id)
+
   const structure = note.structure as any || {}
-  const actionItems = note.action_items as any[] || []
+  const actionItems = allActionItems || []
   const isIdeaStudio = note.mode === 'brainstorming'
+
+  // Create note object with relations for compatibility
+  const noteDisplay: any = {
+    ...note,
+    recording,
+    action_items: actionItems
+  }
 
   return (
     <div className={`min-h-screen ${isIdeaStudio ? 'bg-gradient-to-br from-purple-50 via-indigo-50 to-pink-50' : 'bg-gray-50'}`}>
@@ -87,10 +91,10 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
                 <span className="capitalize">{note.mode} mode</span>
                 <span>•</span>
                 <span>{new Date(note.created_at).toLocaleDateString()}</span>
-                {note.recording && (
+                {recording && (
                   <>
                     <span>•</span>
-                    <span>{note.recording.duration || 0} minutes</span>
+                    <span>{recording.duration || 0} minutes</span>
                   </>
                 )}
               </div>
@@ -98,7 +102,7 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
             </div>
             <div className="flex space-x-2">
               <FolderSelector noteId={note.id} currentFolderId={note.folder_id} />
-              <ExportMenu note={note} />
+              <ExportMenu note={noteDisplay} />
             </div>
           </div>
         </div>
@@ -190,17 +194,17 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
               AI Research Findings
             </h2>
 
-            {note.research_data.summary && (
+            {(note.research_data as any).summary && (
               <div className="mb-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                <p className="text-gray-700">{note.research_data.summary}</p>
+                <p className="text-gray-700">{(note.research_data as any).summary}</p>
               </div>
             )}
 
-            {note.research_data.keyInsights && note.research_data.keyInsights.length > 0 && (
+            {(note.research_data as any).keyInsights && (note.research_data as any).keyInsights.length > 0 && (
               <div className="mb-4">
                 <h3 className="font-semibold text-green-900 mb-2">Key Insights:</h3>
                 <ul className="space-y-2">
-                  {note.research_data.keyInsights.map((insight: string, i: number) => (
+                  {(note.research_data as any).keyInsights.map((insight: string, i: number) => (
                     <li key={i} className="flex items-start">
                       <span className="text-green-600 font-bold mr-2">•</span>
                       <span className="text-gray-700">{insight}</span>
@@ -210,10 +214,10 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
               </div>
             )}
 
-            {note.research_data.findings && note.research_data.findings.length > 0 && (
+            {(note.research_data as any).findings && (note.research_data as any).findings.length > 0 && (
               <div>
                 <h3 className="font-semibold text-green-900 mb-3">Research Details:</h3>
-                {note.research_data.findings.map((finding: any, i: number) => (
+                {(note.research_data as any).findings.map((finding: any, i: number) => (
                   <div key={i} className="mb-4 p-4 bg-white rounded-lg border border-green-200">
                     <h4 className="font-medium text-gray-900 mb-2">{finding.query}</h4>
                     <p className="text-gray-700 mb-2 text-sm">{finding.answer}</p>
@@ -245,7 +249,7 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
 
         {/* Project Brief */}
         {isIdeaStudio && note.project_brief && (
-          <ProjectBriefDisplay brief={note.project_brief} noteTitle={note.title} />
+          <ProjectBriefDisplay brief={note.project_brief as any} noteTitle={note.title} />
         )}
 
         {/* Obstacles */}
@@ -287,7 +291,7 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
         {actionItems && actionItems.length > 0 && (
           <ActionItemsTable
             noteId={note.id}
-            initialItems={actionItems}
+            initialItems={actionItems as any}
             variant={isIdeaStudio ? 'brainstorming' : 'meeting'}
           />
         )}

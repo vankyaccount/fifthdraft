@@ -5,7 +5,7 @@ import { db } from '@/lib/db/queries'
 // Get a single action item
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const result = await getCurrentUser()
@@ -17,27 +17,21 @@ export async function GET(
       )
     }
 
-    const { data: actionItem, error } = await db.query(
+    const { id } = await params
+
+    const queryResult = await db.query(
       `SELECT * FROM action_items WHERE id = $1 AND user_id = $2`,
-      [params.id, result.user.id]
+      [id, result.user.id]
     )
 
-    if (error) {
-      console.error('Error fetching action item:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch action item' },
-        { status: 500 }
-      )
-    }
-
-    if (!actionItem || actionItem.length === 0) {
+    if (!queryResult.rows || queryResult.rows.length === 0) {
       return NextResponse.json(
         { error: 'Action item not found' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json(actionItem[0])
+    return NextResponse.json(queryResult.rows[0])
   } catch (error) {
     console.error('Error in GET /api/action-items/[id]:', error)
     return NextResponse.json(
@@ -50,7 +44,7 @@ export async function GET(
 // Update an action item
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const result = await getCurrentUser()
@@ -62,6 +56,7 @@ export async function PATCH(
       )
     }
 
+    const { id } = await params
     const body = await request.json()
     const {
       title,
@@ -145,34 +140,26 @@ export async function PATCH(
     updates.push(`updated_at = NOW()`)
 
     // Add WHERE clause parameters
-    values.push(params.id)
+    values.push(id)
     values.push(result.user.id)
 
-    const query = `
+    const queryText = `
       UPDATE action_items
       SET ${updates.join(', ')}
       WHERE id = $${paramCount} AND user_id = $${paramCount + 1}
       RETURNING *
     `
 
-    const { data: updatedItem, error } = await db.query(query, values)
+    const queryResult = await db.query(queryText, values)
 
-    if (error) {
-      console.error('Error updating action item:', error)
-      return NextResponse.json(
-        { error: 'Failed to update action item' },
-        { status: 500 }
-      )
-    }
-
-    if (!updatedItem || updatedItem.length === 0) {
+    if (!queryResult.rows || queryResult.rows.length === 0) {
       return NextResponse.json(
         { error: 'Action item not found' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json(updatedItem[0])
+    return NextResponse.json(queryResult.rows[0])
   } catch (error) {
     console.error('Error in PATCH /api/action-items/[id]:', error)
     return NextResponse.json(
@@ -185,7 +172,7 @@ export async function PATCH(
 // Delete an action item
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const result = await getCurrentUser()
@@ -197,27 +184,21 @@ export async function DELETE(
       )
     }
 
-    const { data, error } = await db.query(
+    const { id } = await params
+
+    const queryResult = await db.query(
       `DELETE FROM action_items WHERE id = $1 AND user_id = $2 RETURNING id`,
-      [params.id, result.user.id]
+      [id, result.user.id]
     )
 
-    if (error) {
-      console.error('Error deleting action item:', error)
-      return NextResponse.json(
-        { error: 'Failed to delete action item' },
-        { status: 500 }
-      )
-    }
-
-    if (!data || data.length === 0) {
+    if (!queryResult.rows || queryResult.rows.length === 0) {
       return NextResponse.json(
         { error: 'Action item not found' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json({ success: true, id: params.id })
+    return NextResponse.json({ success: true, id })
   } catch (error) {
     console.error('Error in DELETE /api/action-items/[id]:', error)
     return NextResponse.json(

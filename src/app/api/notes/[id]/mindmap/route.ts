@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth/server'
+import { db } from '@/lib/db/queries'
 import { generateMindMap, generateHierarchicalMindMap, getMermaidImageUrl } from '@/lib/services/mindmap-generator'
 
 /**
@@ -17,20 +18,14 @@ export async function GET(
     const format = searchParams.get('format') || 'mermaid' // 'mermaid' or 'hierarchical'
     const output = searchParams.get('output') || 'syntax' // 'syntax' or 'image'
 
-    const supabase = await createClient()
-
     // Get current user
-    const { data: { user } } = await supabase.auth.getUser()
+    const { user } = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check user's subscription tier (mindmap is Pro only)
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('subscription_tier')
-      .eq('id', user.id)
-      .single()
+    const profile = await db.profiles.findById(user.id)
 
     if (profile?.subscription_tier !== 'pro') {
       return NextResponse.json(
@@ -40,14 +35,9 @@ export async function GET(
     }
 
     // Get the note
-    const { data: note, error: noteError } = await supabase
-      .from('notes')
-      .select('*')
-      .eq('id', noteId)
-      .eq('user_id', user.id)
-      .single()
+    const note = await db.notes.findByIdAndUserId(noteId, user.id)
 
-    if (noteError || !note) {
+    if (!note) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 })
     }
 
@@ -60,11 +50,11 @@ export async function GET(
     }
 
     // Extract data from note structure
-    const structure = note.structure || {}
-    const coreIdeas = structure.coreIdeas || []
-    const expansionOpportunities = structure.expansionOpportunities || []
-    const nextSteps = structure.nextSteps || []
-    const obstacles = structure.obstacles || []
+    const structure = (note.structure as any) || {}
+    const coreIdeas = Array.isArray(structure.coreIdeas) ? structure.coreIdeas : []
+    const expansionOpportunities = Array.isArray(structure.expansionOpportunities) ? structure.expansionOpportunities : []
+    const nextSteps = Array.isArray(structure.nextSteps) ? structure.nextSteps : []
+    const obstacles = Array.isArray(structure.obstacles) ? structure.obstacles : []
 
     // Generate mind map
     let mermaidSyntax: string

@@ -60,19 +60,11 @@ export async function GET(request: NextRequest) {
       sql += ` ORDER BY created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`
       params.push(limit, offset)
 
-      const { data: notes, error } = await db.query(sql, params)
-
-      if (error) {
-        console.error('Error fetching notes:', error)
-        return NextResponse.json(
-          { error: 'Failed to fetch notes' },
-          { status: 500 }
-        )
-      }
+      const queryResult = await db.query(sql, params)
 
       return NextResponse.json({
-        notes: notes || [],
-        total: notes?.length || 0,
+        notes: queryResult.rows || [],
+        total: queryResult.rows?.length || 0,
         query: ''
       })
     }
@@ -129,15 +121,7 @@ export async function GET(request: NextRequest) {
     sql += ` LIMIT $${paramCount} OFFSET $${paramCount + 1}`
     params.push(limit, offset)
 
-    const { data: notes, error } = await db.query(sql, params)
-
-    if (error) {
-      console.error('Error searching notes:', error)
-      return NextResponse.json(
-        { error: 'Failed to search notes' },
-        { status: 500 }
-      )
-    }
+    const searchResult = await db.query(sql, params)
 
     // Get total count for pagination
     let countSql = `
@@ -175,11 +159,11 @@ export async function GET(request: NextRequest) {
       countParams.push(toDate)
     }
 
-    const { data: countData } = await db.query(countSql, countParams)
-    const total = countData && countData[0] ? parseInt(countData[0].total) : 0
+    const countResult = await db.query(countSql, countParams)
+    const total = countResult.rows && countResult.rows[0] ? parseInt(countResult.rows[0].total) : 0
 
     return NextResponse.json({
-      notes: notes || [],
+      notes: searchResult.rows || [],
       total,
       query
     })

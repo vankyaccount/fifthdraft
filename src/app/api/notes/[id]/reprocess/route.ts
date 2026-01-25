@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth/server'
+import { db } from '@/lib/db/queries'
 import { processBrainstormingNote } from '@/lib/services/brainstorming-processor'
 
 /**
@@ -13,23 +14,17 @@ export async function POST(
   try {
     const { id } = await params
     const noteId = id
-    const supabase = await createClient()
 
     // Get current user
-    const { data: { user } } = await supabase.auth.getUser()
+    const { user } = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Get the note
-    const { data: note, error: noteError } = await supabase
-      .from('notes')
-      .select('*')
-      .eq('id', noteId)
-      .eq('user_id', user.id)
-      .single()
+    const note = await db.notes.findByIdAndUserId(noteId, user.id)
 
-    if (noteError || !note) {
+    if (!note) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 })
     }
 
@@ -65,24 +60,21 @@ export async function POST(
     })
 
     // Update note with new structure
-    const { error: updateError } = await supabase
-      .from('notes')
-      .update({
-        structure: {
-          summary: structure.coreIdeas[0]?.description || transcript.substring(0, 300),
-          coreIdeas: structure.coreIdeas,
-          expansionOpportunities: structure.expansionOpportunities,
-          researchQuestions: structure.researchQuestions,
-          nextSteps: structure.nextSteps,
-          obstacles: structure.obstacles,
-          creativePrompts: structure.creativePrompts,
-        },
-        embedding: embedding,
-      })
-      .eq('id', noteId)
+    const updatedNote = await db.notes.update(noteId, {
+      structure: {
+        summary: structure.coreIdeas[0]?.description || transcript.substring(0, 300),
+        coreIdeas: structure.coreIdeas,
+        expansionOpportunities: structure.expansionOpportunities,
+        researchQuestions: structure.researchQuestions,
+        nextSteps: structure.nextSteps,
+        obstacles: structure.obstacles,
+        creativePrompts: structure.creativePrompts,
+      },
+      embedding: embedding,
+    })
 
-    if (updateError) {
-      console.error('Failed to update note:', updateError)
+    if (!updatedNote) {
+      console.error('Failed to update note')
       return NextResponse.json(
         { error: 'Failed to save reprocessed data' },
         { status: 500 }

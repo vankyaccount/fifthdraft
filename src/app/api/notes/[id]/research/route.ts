@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth/server'
+import { db } from '@/lib/db/queries'
 import { runResearchAssistant } from '@/lib/services/research-assistant'
 
 /**
@@ -13,20 +14,15 @@ export async function POST(
   try {
     const { id } = await params
     const noteId = id
-    const supabase = await createClient()
 
     // Get current user
-    const { data: { user } } = await supabase.auth.getUser()
+    const { user } = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check user's subscription tier (research assistant is Pro only)
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('subscription_tier')
-      .eq('id', user.id)
-      .single()
+    const profile = await db.profiles.findById(user.id)
 
     if (profile?.subscription_tier !== 'pro') {
       return NextResponse.json(
@@ -36,14 +32,9 @@ export async function POST(
     }
 
     // Get the note
-    const { data: note, error: noteError } = await supabase
-      .from('notes')
-      .select('*')
-      .eq('id', noteId)
-      .eq('user_id', user.id)
-      .single()
+    const note = await db.notes.findByIdAndUserId(noteId, user.id)
 
-    if (noteError || !note) {
+    if (!note) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 })
     }
 
@@ -56,8 +47,8 @@ export async function POST(
     }
 
     // Extract research questions from note structure
-    const structure = note.structure || {}
-    const researchQuestions = structure.researchQuestions || []
+    const structure = (note.structure as any) || {}
+    const researchQuestions = Array.isArray(structure.researchQuestions) ? structure.researchQuestions : []
 
     if (researchQuestions.length === 0) {
       return NextResponse.json(
@@ -73,20 +64,17 @@ export async function POST(
     )
 
     // Update note with research data
-    const { error: updateError } = await supabase
-      .from('notes')
-      .update({
-        research_data: {
-          findings: researchOutput.findings,
-          summary: researchOutput.summary,
-          keyInsights: researchOutput.keyInsights,
-          researched_at: new Date().toISOString(),
-        },
-      })
-      .eq('id', noteId)
+    const updatedNote = await db.notes.update(noteId, {
+      research_data: {
+        findings: researchOutput.findings,
+        summary: researchOutput.summary,
+        keyInsights: researchOutput.keyInsights,
+        researched_at: new Date().toISOString(),
+      },
+    })
 
-    if (updateError) {
-      console.error('Failed to update note with research data:', updateError)
+    if (!updatedNote) {
+      console.error('Failed to update note with research data')
       return NextResponse.json(
         { error: 'Failed to save research data' },
         { status: 500 }

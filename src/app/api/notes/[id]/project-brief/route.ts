@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth/server'
+import { db } from '@/lib/db/queries'
 import { generateProjectBrief, exportBriefAsMarkdown } from '@/lib/services/project-brief-generator'
 
 /**
@@ -13,20 +14,15 @@ export async function POST(
   try {
     const { id } = await params
     const noteId = id
-    const supabase = await createClient()
 
     // Get current user
-    const { data: { user } } = await supabase.auth.getUser()
+    const { user } = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check user's subscription tier (project brief is Pro only)
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('subscription_tier')
-      .eq('id', user.id)
-      .single()
+    const profile = await db.profiles.findById(user.id)
 
     if (profile?.subscription_tier !== 'pro') {
       return NextResponse.json(
@@ -36,14 +32,9 @@ export async function POST(
     }
 
     // Get the note
-    const { data: note, error: noteError } = await supabase
-      .from('notes')
-      .select('*')
-      .eq('id', noteId)
-      .eq('user_id', user.id)
-      .single()
+    const note = await db.notes.findByIdAndUserId(noteId, user.id)
 
-    if (noteError || !note) {
+    if (!note) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 })
     }
 
@@ -74,18 +65,15 @@ export async function POST(
       brief = await generateProjectBrief(
         note.title,
         note.content,
-        coreIdeas,
-        nextSteps
-      )
+        coreIdeas as any,
+        nextSteps as any
+      ) as any
 
       // Save to database for future use
-      const { error: updateError } = await supabase
-        .from('notes')
-        .update({ project_brief: brief })
-        .eq('id', noteId)
+      const updatedNote = await db.notes.update(noteId, { project_brief: brief })
 
-      if (updateError) {
-        console.error('Failed to cache project brief:', updateError)
+      if (!updatedNote) {
+        console.error('Failed to cache project brief')
         // Continue anyway - caching failure shouldn't break the feature
       } else {
         console.log('[Project Brief] Cached successfully')
@@ -95,7 +83,7 @@ export async function POST(
     }
 
     // Generate markdown export
-    const markdown = exportBriefAsMarkdown(brief)
+    const markdown = exportBriefAsMarkdown(brief as any)
 
     // Determine export format
     const format = body?.format || 'txt'

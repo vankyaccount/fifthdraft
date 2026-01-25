@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth/server'
+import { db } from '@/lib/db/queries'
 import { findRelatedNotes, generateEvolutionTimeline, suggestMergeOpportunities } from '@/lib/services/idea-evolution'
 
 /**
@@ -17,20 +18,14 @@ export async function GET(
     const includeTimeline = searchParams.get('timeline') === 'true'
     const includeMerge = searchParams.get('merge') === 'true'
 
-    const supabase = await createClient()
-
     // Get current user
-    const { data: { user } } = await supabase.auth.getUser()
+    const { user } = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check user's subscription tier (idea evolution is Pro only)
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('subscription_tier')
-      .eq('id', user.id)
-      .single()
+    const profile = await db.profiles.findById(user.id)
 
     if (profile?.subscription_tier !== 'pro') {
       return NextResponse.json(
@@ -40,14 +35,9 @@ export async function GET(
     }
 
     // Get the current note with embedding
-    const { data: currentNote, error: currentNoteError } = await supabase
-      .from('notes')
-      .select('*')
-      .eq('id', noteId)
-      .eq('user_id', user.id)
-      .single()
+    const currentNote = await db.notes.findByIdAndUserId(noteId, user.id)
 
-    if (currentNoteError || !currentNote) {
+    if (!currentNote) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 })
     }
 
@@ -59,22 +49,18 @@ export async function GET(
     }
 
     // Get all other brainstorming notes by this user
-    const { data: allNotes, error: notesError } = await supabase
-      .from('notes')
-      .select('id, title, created_at, embedding, structure, mode')
-      .eq('user_id', user.id)
-      .eq('mode', 'brainstorming')
-      .neq('id', noteId)
+    const allNotes = await db.notes.findByUserId(user.id, 100)
 
-    if (notesError) {
-      throw new Error(`Failed to fetch notes: ${notesError.message}`)
-    }
+    // Filter to brainstorming notes and exclude current note
+    const brainstormingNotes = allNotes.filter(
+      (n) => n.mode === 'brainstorming' && n.id !== noteId
+    )
 
     // Find related notes
     const relatedNotes = await findRelatedNotes(
       noteId,
-      currentNote.embedding,
-      allNotes || [],
+      currentNote.embedding!,
+      brainstormingNotes as any || [],
       0.7, // minimum similarity
       5 // max results
     )
@@ -88,7 +74,7 @@ export async function GET(
           title: currentNote.title,
           created_at: currentNote.created_at,
           similarity_score: 1.0,
-          core_ideas: currentNote.structure?.coreIdeas?.map((i: any) => i.title) || [],
+          core_ideas: (currentNote.structure as any)?.coreIdeas?.map((i: any) => i.title) || [],
         },
         ...relatedNotes,
       ])
