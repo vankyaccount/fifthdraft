@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { query, transaction } from '@/lib/db/postgres';
+import { EmailService } from '@/lib/email/resend';
 import type { AuthUser, TokenPair, LoginResult, SignUpResult, JWTPayload } from './types';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-change-in-production';
@@ -78,10 +79,10 @@ export class AuthService {
       const verifyToken = crypto.randomBytes(32).toString('hex');
 
       await transaction(async (client) => {
-        // Create auth user (auto-verified until email system is implemented)
+        // Create auth user
         await client.query(
-          `INSERT INTO auth_users (id, email, password_hash, verify_token, email_verified, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, true, NOW(), NOW())`,
+          `INSERT INTO auth_users (id, email, password_hash, verify_token, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, NOW(), NOW())`,
           [userId, email.toLowerCase(), passwordHash, verifyToken]
         );
 
@@ -93,10 +94,10 @@ export class AuthService {
         );
       });
 
-      // TODO: Send verification email (currently auto-verifying users)
-      // await sendVerificationEmail(email, verifyToken);
+      // Send verification email
+      await EmailService.sendVerificationEmail(email, verifyToken);
 
-      return { userId, needsVerification: false };
+      return { userId, needsVerification: true };
     } catch (error: unknown) {
       console.error('Signup error details:', {
         error,
@@ -223,8 +224,8 @@ export class AuthService {
         [resetToken, expiry, email.toLowerCase()]
       );
 
-      // TODO: Send reset email
-      // await sendPasswordResetEmail(email, resetToken);
+      // Send password reset email
+      await EmailService.sendPasswordResetEmail(email, resetToken);
 
       return { success: true };
     } catch (error: unknown) {
@@ -296,8 +297,8 @@ export class AuthService {
         return { success: false, error: 'User not found or already verified' };
       }
 
-      // TODO: Send verification email
-      // await sendVerificationEmail(email, verifyToken);
+      // Send verification email
+      await EmailService.sendVerificationEmail(email, verifyToken);
 
       return { success: true };
     } catch (error: unknown) {
