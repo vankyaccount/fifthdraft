@@ -28,7 +28,7 @@ export default function SignupPage() {
     }
 
     if (result.needsVerification) {
-      router.push('/verify-email')
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`)
     } else {
       router.push('/onboarding')
     }

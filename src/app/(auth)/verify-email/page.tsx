@@ -29,10 +29,10 @@ function VerifyEmailContent() {
             setMessage(result.error)
           } else {
             setStatus('success')
-            setMessage('Your email has been verified!')
-            // Redirect to dashboard after 2 seconds
+            setMessage('Your email has been verified! You can now log in.')
+            // Redirect to login after 2 seconds
             setTimeout(() => {
-              router.push('/dashboard')
+              router.push('/login')
             }, 2000)
           }
         } catch (err) {
@@ -40,19 +40,29 @@ function VerifyEmailContent() {
           setMessage('Verification failed. Please try again.')
         }
       } else {
-        // No token - show pending state
-        const result = await getCurrentUser()
-        if (result.user) {
-          setEmail(result.user.email)
-          if (result.user.emailVerified) {
-            setStatus('success')
-            setMessage('Your email is already verified!')
-          } else {
-            setStatus('pending')
-          }
+        // No token - show pending state (check your email)
+        // First check if email was passed via query param (from signup)
+        const emailParam = searchParams.get('email')
+
+        if (emailParam) {
+          // Email from signup redirect - show pending state
+          setEmail(emailParam)
+          setStatus('pending')
         } else {
-          // Not logged in
-          router.push('/login')
+          // Try to get current user (if already logged in)
+          const result = await getCurrentUser()
+          if (result.user) {
+            setEmail(result.user.email)
+            if (result.user.emailVerified) {
+              setStatus('success')
+              setMessage('Your email is already verified!')
+            } else {
+              setStatus('pending')
+            }
+          } else {
+            // Not logged in and no email param - redirect to login
+            router.push('/login')
+          }
         }
       }
     }
@@ -103,10 +113,10 @@ function VerifyEmailContent() {
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Email Verified!</h2>
             <p className="text-gray-600 mb-6">{message}</p>
             <Link
-              href="/dashboard"
+              href="/login"
               className="inline-block bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
             >
-              Go to Dashboard
+              Sign In
             </Link>
           </div>
         )}
