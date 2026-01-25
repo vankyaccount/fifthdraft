@@ -72,32 +72,14 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Three Powerful Capabilities Section */}
+          {/* Two Powerful Modes Section */}
           <div className="mt-24">
-            <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">Three Powerful Capabilities</h2>
+            <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">Two Powerful Modes</h2>
             <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
-              Record anywhere with RAAS infrastructure. Transform ideas with Idea Studio. Take professional meeting notes. All in one platform.
+              Transform ideas with Idea Studio or take professional meeting notes. Capture your thinking anywhere, anytime.
             </p>
 
-            <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-8">
-              {/* RAAS Section */}
-              <div className="bg-white p-8 rounded-xl shadow-lg border-2 border-blue-200 hover:shadow-xl transition-shadow">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                  </svg>
-                </div>
-                <h3 className="text-2xl font-semibold text-gray-900 mb-3">Record Anywhere (RAAS)</h3>
-                <p className="text-gray-600 mb-4">
-                  Capture your thinking from any device. Browser recording, system audio for Zoom/Teams calls, or upload audio files.
-                </p>
-                <ul className="space-y-2 text-sm text-gray-600 mb-4">
-                  <li className="flex items-center"><span className="text-blue-500 mr-2">✓</span> Browser recording (all tiers)</li>
-                  <li className="flex items-center"><span className="text-blue-500 mr-2">✓</span> System audio capture (Pro+)</li>
-                  <li className="flex items-center"><span className="text-blue-500 mr-2">✓</span> File uploads up to 240MB (Pro+)</li>
-                  <li className="flex items-center"><span className="text-blue-500 mr-2">✓</span> Record up to 4 hours per session</li>
-                </ul>
-              </div>
+            <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto mb-8">
 
               {/* Idea Studio Mode - Moved to First Position */}
               <div id="idea-studio" className="bg-gradient-to-br from-purple-50 via-indigo-50 to-pink-50 p-8 rounded-xl shadow-lg border-2 border-purple-200 hover:shadow-xl transition-shadow relative overflow-hidden md:col-span-1">
@@ -293,19 +275,7 @@ export default function Home() {
           </div>
 
           {/* Features Grid */}
-          <div className="mt-24 grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mb-4">
-                <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Record Anywhere</h3>
-              <p className="text-gray-600">
-                Capture thoughts directly in your browser or upload audio files. System audio capture for Zoom/Teams calls.
-              </p>
-            </div>
-
+          <div className="mt-24 grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
               <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mb-4">
                 <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
