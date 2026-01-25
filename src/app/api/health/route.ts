@@ -11,6 +11,12 @@ interface HealthStatus {
       provider: string
       latency?: number
       error?: string
+      tablesExist?: boolean
+      missingTables?: string[]
+    }
+    auth: {
+      status: 'configured' | 'not_configured'
+      jwtConfigured: boolean
     }
     openai: {
       status: 'configured' | 'not_configured'
@@ -38,6 +44,10 @@ export async function GET() {
         status: 'unknown',
         provider: 'postgres',
       },
+      auth: {
+        status: 'configured',
+        jwtConfigured: !!process.env.JWT_SECRET && process.env.JWT_SECRET !== 'fallback-secret-change-in-production',
+      },
       openai: {
         status: process.env.OPENAI_API_KEY ? 'configured' : 'not_configured',
       },
@@ -51,18 +61,54 @@ export async function GET() {
     uptime: Math.floor((Date.now() - startTime) / 1000),
   }
 
-  // Check database connectivity
+  // Check database connectivity and schema
   try {
-    const { checkHealth } = await import('@/lib/db/postgres')
+    const { checkHealth, query } = await import('@/lib/db/postgres')
     const dbHealth = await checkHealth()
     health.services.database.status = dbHealth.healthy ? 'up' : 'down'
     health.services.database.latency = dbHealth.latency
     if (dbHealth.error) {
       health.services.database.error = dbHealth.error
     }
+
+    // Check if required tables exist
+    if (dbHealth.healthy) {
+      try {
+        const requiredTables = ['auth_users', 'profiles', 'recordings', 'transcriptions', 'notes']
+        const missingTables: string[] = []
+
+        for (const tableName of requiredTables) {
+          const result = await query(
+            `SELECT EXISTS (
+              SELECT FROM information_schema.tables
+              WHERE table_schema = 'public'
+              AND table_name = $1
+            )`,
+            [tableName]
+          )
+          if (!result.rows[0]?.exists) {
+            missingTables.push(tableName)
+          }
+        }
+
+        health.services.database.tablesExist = missingTables.length === 0
+        if (missingTables.length > 0) {
+          health.services.database.missingTables = missingTables
+          health.status = 'degraded'
+        }
+      } catch (error) {
+        health.services.database.error = `Schema check failed: ${(error as Error).message}`
+      }
+    }
   } catch (error: unknown) {
     health.services.database.status = 'down'
     health.services.database.error = (error as Error).message
+  }
+
+  // Check auth configuration
+  if (!health.services.auth.jwtConfigured) {
+    health.services.auth.status = 'not_configured'
+    health.status = 'degraded'
   }
 
   // Determine overall health status (degraded if database is down, but still return 200)

@@ -98,7 +98,29 @@ export class AuthService {
 
       return { userId, needsVerification: true };
     } catch (error: unknown) {
-      console.error('Signup error:', error);
+      console.error('Signup error details:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        email: email.toLowerCase(),
+      });
+
+      // Return more specific error messages
+      if (error instanceof Error) {
+        // Database connection errors
+        if (error.message.includes('ECONNREFUSED') || error.message.includes('connect')) {
+          return { error: 'Database connection failed. Please contact support.' };
+        }
+        // Table doesn't exist
+        if (error.message.includes('relation') && error.message.includes('does not exist')) {
+          return { error: 'Database not initialized. Please contact support.' };
+        }
+        // Generic database errors
+        if (error.message.includes('database')) {
+          return { error: `Database error: ${error.message}` };
+        }
+      }
+
       return { error: 'Failed to create account' };
     }
   }

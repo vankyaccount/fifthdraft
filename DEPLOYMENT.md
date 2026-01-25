@@ -85,10 +85,44 @@ After deployment, verify database connection by checking application logs in Coo
 
 ## Troubleshooting
 
+### Signup Not Working (400 Bad Request)
+If users can't sign up, check the following in order:
+
+1. **Check Health Endpoint**
+   ```bash
+   curl https://your-domain.com/api/health
+   ```
+   Look for:
+   - `database.status` should be `"up"`
+   - `database.tablesExist` should be `true`
+   - `auth.jwtConfigured` should be `true`
+
+2. **Database Tables Missing**
+   If `database.tablesExist` is `false` or `missingTables` is present:
+   ```bash
+   # Connect to database and run migration
+   psql -h <host> -U <user> -d <database> -f migrations/001_complete_schema.sql
+   ```
+
+3. **JWT Not Configured**
+   If `auth.jwtConfigured` is `false`:
+   - Set `JWT_SECRET` environment variable
+   - Set `JWT_REFRESH_SECRET` environment variable
+   - Generate with: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+   - Restart application after setting
+
+4. **Check Application Logs**
+   In Coolify, check application logs for detailed error messages. Look for:
+   - `Signup error details:` - Shows specific database errors
+   - `Database connection failed` - Connection issues
+   - `Database not initialized` - Missing tables
+   - `relation "auth_users" does not exist` - Tables not created
+
 ### Database Connection Issues
-- Verify POSTGRES_HOST is the internal Coolify service name
-- Check PostgreSQL is running
-- Verify credentials match
+- Verify POSTGRES_HOST is the internal Coolify service name (usually just the service name, e.g., `postgres`)
+- Check PostgreSQL is running in Coolify
+- Verify credentials match exactly (check for extra spaces or quotes)
+- Test connection from application container: `psql -h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_DATABASE`
 
 ### Storage Issues
 - Ensure volume is mounted at `/app/data`
@@ -96,7 +130,8 @@ After deployment, verify database connection by checking application logs in Coo
 
 ### JWT Issues
 - Ensure JWT_SECRET and JWT_REFRESH_SECRET are set
-- Secrets should be 256-bit random strings
+- Secrets should be 256-bit random strings (64 hex characters)
+- Do NOT use the default fallback secrets in production
 
 ## Generate Secrets
 ```bash
