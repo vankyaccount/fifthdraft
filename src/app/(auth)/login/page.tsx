@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { login } from '@/lib/auth/client'
+import { loginAction } from './actions'
 import Link from 'next/link'
 import Logo from '@/components/ui/Logo'
 
@@ -16,14 +16,21 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
-    const result = await login(email, password)
+    try {
+      // Use Server Action instead of API route - this properly sets cookies
+      const result = await loginAction(email, password)
 
-    if (result.error) {
-      setError(result.error)
+      if (!result.success) {
+        setError(result.error || 'Login failed')
+        setLoading(false)
+      } else {
+        // Server Action has set the cookies, now navigate
+        window.location.href = '/dashboard'
+      }
+    } catch (err) {
+      console.error('Login error:', err)
+      setError('An unexpected error occurred')
       setLoading(false)
-    } else {
-      // Use window.location for full page navigation to avoid Server Action issues
-      window.location.href = '/dashboard'
     }
   }
 
