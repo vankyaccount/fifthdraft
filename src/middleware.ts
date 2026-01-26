@@ -16,30 +16,43 @@ interface UserPayload {
 async function verifyToken(token: string): Promise<UserPayload | null> {
   try {
     const { payload } = await jwtVerify(token, getJwtSecret());
-    if (payload.type !== 'access') return null;
+    if (payload.type !== 'access') {
+      console.log('Middleware: Token type mismatch, expected access, got:', payload.type);
+      return null;
+    }
     return {
       sub: payload.sub as string,
       email: payload.email as string,
     };
-  } catch {
+  } catch (error) {
+    console.log('Middleware: Token verification failed:', error instanceof Error ? error.message : 'Unknown error');
     return null;
   }
 }
 
 export async function middleware(request: NextRequest) {
   const accessToken = request.cookies.get('access_token')?.value;
+  const { pathname } = request.nextUrl;
+
+  // Debug logging for protected routes
+  if (pathname.startsWith('/dashboard')) {
+    console.log('Middleware:', {
+      pathname,
+      hasAccessToken: !!accessToken,
+      tokenPreview: accessToken ? `${accessToken.substring(0, 20)}...` : 'none',
+      allCookies: request.cookies.getAll().map(c => c.name),
+    });
+  }
 
   let user: UserPayload | null = null;
   if (accessToken) {
     user = await verifyToken(accessToken);
   }
 
-  const { pathname } = request.nextUrl;
-
   // Protect dashboard routes
   if (pathname.startsWith('/dashboard')) {
     if (!user) {
-      console.log('Middleware: Redirecting to /login - no authenticated user');
+      console.log('Middleware: Redirecting to /login - no authenticated user, hasToken:', !!accessToken);
       return NextResponse.redirect(new URL('/login', request.url));
     }
     console.log('Middleware: User authenticated for dashboard:', user.email);

@@ -35,6 +35,7 @@ export async function login(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
+      credentials: 'include',
     });
 
     const data = await res.json();
@@ -60,6 +61,7 @@ export async function signup(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, fullName }),
+      credentials: 'include',
     });
 
     const data = await res.json();
@@ -77,7 +79,7 @@ export async function signup(
 // Logout
 export async function logout(): Promise<void> {
   try {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
   } finally {
     // Always redirect to login, even if request fails
     window.location.href = '/login';
@@ -93,6 +95,7 @@ export async function requestPasswordReset(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
+      credentials: 'include',
     });
 
     const data = await res.json();
@@ -117,6 +120,7 @@ export async function resetPassword(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token, password }),
+      credentials: 'include',
     });
 
     const data = await res.json();
@@ -140,6 +144,7 @@ export async function verifyEmail(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token }),
+      credentials: 'include',
     });
 
     const data = await res.json();
@@ -163,6 +168,7 @@ export async function resendVerification(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
+      credentials: 'include',
     });
 
     const data = await res.json();
@@ -187,7 +193,7 @@ export async function getCurrentUser(): Promise<{
   error?: string;
 }> {
   try {
-    const res = await fetch('/api/auth/me');
+    const res = await fetch('/api/auth/me', { credentials: 'include' });
 
     if (!res.ok) {
       return { error: 'Not authenticated' };
@@ -216,6 +222,7 @@ export async function changePassword(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ currentPassword, newPassword }),
+      credentials: 'include',
     });
 
     const data = await res.json();
@@ -235,6 +242,7 @@ export async function deleteAccount(): Promise<{ success?: boolean; error?: stri
   try {
     const res = await fetch('/api/auth/delete-account', {
       method: 'POST',
+      credentials: 'include',
     });
 
     const data = await res.json();

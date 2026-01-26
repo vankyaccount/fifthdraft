@@ -184,6 +184,12 @@ function VerifyEmailContent() {
                 Resend Verification Email
               </button>
               <Link
+                href="/login"
+                className="block text-indigo-600 hover:text-indigo-700 font-medium"
+              >
+                Back to Login
+              </Link>
+              <Link
                 href="/dashboard"
                 className="block text-gray-600 hover:text-gray-900"
               >
