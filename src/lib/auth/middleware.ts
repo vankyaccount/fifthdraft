@@ -131,15 +131,29 @@ export function setAuthCookies(
   accessToken: string,
   refreshToken: string
 ): void {
-  response.cookies.set('access_token', accessToken, {
+  // Debug: Log cookie options
+  const accessCookieOptions = {
     ...AUTH_COOKIE_OPTIONS,
     maxAge: 15 * 60, // 15 minutes
-  });
-
-  response.cookies.set('refresh_token', refreshToken, {
+  };
+  const refreshCookieOptions = {
     ...AUTH_COOKIE_OPTIONS,
     maxAge: 7 * 24 * 60 * 60, // 7 days
+  };
+
+  console.log('Setting cookies with options:', {
+    secure: AUTH_COOKIE_OPTIONS.secure,
+    sameSite: AUTH_COOKIE_OPTIONS.sameSite,
+    path: AUTH_COOKIE_OPTIONS.path,
+    nodeEnv: process.env.NODE_ENV,
   });
+
+  response.cookies.set('access_token', accessToken, accessCookieOptions);
+  response.cookies.set('refresh_token', refreshToken, refreshCookieOptions);
+
+  // Debug: Log the Set-Cookie headers that will be sent
+  const setCookieHeaders = response.headers.getSetCookie();
+  console.log('Set-Cookie headers:', setCookieHeaders.length > 0 ? setCookieHeaders : 'NONE - cookies may not be set correctly');
 }
 
 // Clear auth cookies on response
