@@ -1,37 +1,27 @@
 'use client'
 
-import { useState } from 'react'
-import { loginAction } from './actions'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Logo from '@/components/ui/Logo'
 
-export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const searchParams = useSearchParams()
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // Check for error in URL (from form submission redirect)
+  useEffect(() => {
+    const errorParam = searchParams.get('error')
+    if (errorParam) {
+      setError(decodeURIComponent(errorParam))
+    }
+  }, [searchParams])
+
+  const handleSubmit = () => {
     setLoading(true)
     setError(null)
-
-    try {
-      // Use Server Action instead of API route - this properly sets cookies
-      const result = await loginAction(email, password)
-
-      if (!result.success) {
-        setError(result.error || 'Login failed')
-        setLoading(false)
-      } else {
-        // Server Action has set the cookies, now navigate
-        window.location.href = '/dashboard'
-      }
-    } catch (err) {
-      console.error('Login error:', err)
-      setError('An unexpected error occurred')
-      setLoading(false)
-    }
+    // Form will submit natively - no need to prevent default
   }
 
   return (
@@ -50,7 +40,13 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form onSubmit={handleLogin} className="mt-8 space-y-6">
+        {/* Native HTML form - bypasses all fetch/cookie issues */}
+        <form
+          method="POST"
+          action="/api/auth/login"
+          onSubmit={handleSubmit}
+          className="mt-8 space-y-6"
+        >
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
               {error}
@@ -68,8 +64,6 @@ export default function LoginPage() {
                 type="email"
                 autoComplete="email"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
                 className="mt-1 block w-full px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
@@ -84,8 +78,6 @@ export default function LoginPage() {
                 type="password"
                 autoComplete="current-password"
                 required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
                 className="mt-1 block w-full px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
@@ -117,5 +109,17 @@ export default function LoginPage() {
         </form>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
+        <div className="text-neutral-600">Loading...</div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   )
 }
