@@ -31,6 +31,7 @@ export async function login(
   password: string
 ): Promise<{ user?: AuthUser; error?: string }> {
   try {
+    console.log('Login: Sending request to /api/auth/login');
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -38,14 +39,19 @@ export async function login(
       credentials: 'include',
     });
 
+    console.log('Login: Response status:', res.status);
     const data = await res.json();
+    console.log('Login: Response data:', { hasUser: !!data.user, error: data.error });
 
     if (!res.ok) {
       return { error: data.error || 'Login failed' };
     }
 
+    // Check if cookie was set (for debugging)
+    console.log('Login: Success, navigating to dashboard');
     return { user: data.user };
-  } catch {
+  } catch (err) {
+    console.error('Login: Network error:', err);
     return { error: 'Network error. Please try again.' };
   }
 }
