@@ -99,6 +99,9 @@ export default function UnverifiedPage() {
     );
   }
 
+  // Store the current status in a variable to help TypeScript
+  const currentStatus = status;
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-50">
       <div className="max-w-md w-full space-y-8 p-8">
@@ -118,7 +121,7 @@ export default function UnverifiedPage() {
 
           {message && (
             <div className={`mb-6 px-4 py-3 rounded-lg ${
-              status === 'sent' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'
+              currentStatus === 'sent' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'
             }`}>
               {message}
             </div>
@@ -136,10 +139,10 @@ export default function UnverifiedPage() {
           <div className="space-y-3">
             <button
               onClick={handleResendEmail}
-              disabled={status === 'loading'}
+              disabled={currentStatus === 'loading'}
               className="w-full border-2 border-indigo-600 text-indigo-600 px-6 py-3 rounded-lg font-medium hover:bg-indigo-50 transition-colors disabled:opacity-50"
             >
-              {status === 'loading' ? 'Sending...' : 'Resend Verification Email'}
+              {currentStatus === 'loading' ? 'Sending...' : 'Resend Verification Email'}
             </button>
 
             <button
