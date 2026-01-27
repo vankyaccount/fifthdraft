@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth/client';
-import { resendVerificationEmail } from '@/lib/auth/client';
+import { getCurrentUser, resendVerificationEmail } from '@/lib/auth/client';
 import Link from 'next/link';
 import Logo from '@/components/ui/Logo';
 import { Mail, CheckCircle, Loader2 } from 'lucide-react';
@@ -13,6 +12,12 @@ export default function UnverifiedPage() {
   const [status, setStatus] = useState<'loading' | 'unverified' | 'verified' | 'sent'>('loading');
   const [message, setMessage] = useState('');
   const router = useRouter();
+  const statusRef = useRef(status);
+
+  // Update ref when status changes
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
 
   useEffect(() => {
     checkUserStatus();
@@ -101,6 +106,9 @@ export default function UnverifiedPage() {
 
     case 'unverified':
     case 'sent':
+      // Use the ref value for the button state to avoid type narrowing
+      const isButtonLoading = statusRef.current === 'loading';
+
       return (
         <div className="min-h-screen flex items-center justify-center bg-neutral-50">
           <div className="max-w-md w-full space-y-8 p-8">
@@ -138,10 +146,10 @@ export default function UnverifiedPage() {
               <div className="space-y-3">
                 <button
                   onClick={handleResendEmail}
-                  disabled={status === 'loading'}
+                  disabled={isButtonLoading}
                   className="w-full border-2 border-indigo-600 text-indigo-600 px-6 py-3 rounded-lg font-medium hover:bg-indigo-50 transition-colors disabled:opacity-50"
                 >
-                  {status === 'loading' ? 'Sending...' : 'Resend Verification Email'}
+                  {isButtonLoading ? 'Sending...' : 'Resend Verification Email'}
                 </button>
 
                 <button
