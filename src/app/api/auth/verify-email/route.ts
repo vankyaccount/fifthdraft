@@ -10,17 +10,77 @@ export async function GET(req: NextRequest) {
     console.log('Verify email token (GET):', token ? `${token.substring(0, 8)}...` : 'none');
 
     if (!token) {
-      return NextResponse.json(
-        { error: 'Verification token is required' },
-        { status: 400 }
-      );
+      // Return a proper HTML page with error message
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Email Verification Failed</title>
+            <style>
+              body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f9fafb; }
+              .container { text-align: center; padding: 2rem; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; }
+              .error-icon { font-size: 3rem; color: #ef4444; margin-bottom: 1rem; }
+              h1 { color: #dc2626; margin-bottom: 1rem; }
+              p { color: #6b7280; margin-bottom: 1.5rem; }
+              a { display: inline-block; background-color: #4f46e5; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; text-decoration: none; }
+              a:hover { background-color: #4338ca; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="error-icon">❌</div>
+              <h1>Verification Failed</h1>
+              <p>No verification token provided. Please check your email link.</p>
+              <a href="/login">Go to Login</a>
+            </div>
+          </body>
+        </html>
+      `;
+
+      return new NextResponse(html, {
+        status: 400,
+        headers: { 'Content-Type': 'text/html' },
+      });
     }
 
     const result = await AuthService.verifyEmail(token);
 
     if (!result.success) {
       console.log('Verify email failed (GET):', result.error);
-      return NextResponse.json({ error: result.error }, { status: 400 });
+
+      // Return a proper HTML page with error message
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Email Verification Failed</title>
+            <style>
+              body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f9fafb; }
+              .container { text-align: center; padding: 2rem; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; }
+              .error-icon { font-size: 3rem; color: #ef4444; margin-bottom: 1rem; }
+              h1 { color: #dc2626; margin-bottom: 1rem; }
+              p { color: #6b7280; margin-bottom: 1.5rem; }
+              a { display: inline-block; background-color: #4f46e5; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; text-decoration: none; }
+              a:hover { background-color: #4338ca; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="error-icon">❌</div>
+              <h1>Verification Failed</h1>
+              <p>${result.error || 'Invalid or expired verification token'}</p>
+              <a href="/login">Go to Login</a>
+            </div>
+          </body>
+        </html>
+      `;
+
+      return new NextResponse(html, {
+        status: 400,
+        headers: { 'Content-Type': 'text/html' },
+      });
     }
 
     console.log('Verify email successful (GET):', result.userId);
@@ -28,7 +88,38 @@ export async function GET(req: NextRequest) {
     // Get user info to generate tokens
     const user = await AuthService.getUserById(result.userId!);
     if (!user) {
-      return NextResponse.json({ error: 'User not found after verification' }, { status: 400 });
+      // Return a proper HTML page with error message
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Email Verification Failed</title>
+            <style>
+              body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f9fafb; }
+              .container { text-align: center; padding: 2rem; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; }
+              .error-icon { font-size: 3rem; color: #ef4444; margin-bottom: 1rem; }
+              h1 { color: #dc2626; margin-bottom: 1rem; }
+              p { color: #6b7280; margin-bottom: 1.5rem; }
+              a { display: inline-block; background-color: #4f46e5; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; text-decoration: none; }
+              a:hover { background-color: #4338ca; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="error-icon">❌</div>
+              <h1>Verification Failed</h1>
+              <p>User not found after verification</p>
+              <a href="/login">Go to Login</a>
+            </div>
+          </body>
+        </html>
+      `;
+
+      return new NextResponse(html, {
+        status: 400,
+        headers: { 'Content-Type': 'text/html' },
+      });
     }
 
     // Generate tokens for the verified user
@@ -43,14 +134,30 @@ export async function GET(req: NextRequest) {
         <head>
           <meta charset="utf-8">
           <title>Email Verified</title>
+          <meta http-equiv="refresh" content="2;url=/verify-success?verified=true">
+          <style>
+            body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f9fafb; }
+            .container { text-align: center; padding: 2rem; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; }
+            .success-icon { font-size: 3rem; color: #10b981; margin-bottom: 1rem; }
+            h1 { color: #059669; margin-bottom: 1rem; }
+            p { color: #6b7280; margin-bottom: 1.5rem; }
+            .loader { width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top: 4px solid #10b981; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+          </style>
         </head>
         <body>
-          <p>Email verified successfully! Redirecting to dashboard...</p>
+          <div class="container">
+            <div class="success-icon">✅</div>
+            <h1>Email Verified!</h1>
+            <div class="loader"></div>
+            <p>Your email has been verified successfully. Redirecting to dashboard...</p>
+            <p>If you're not redirected automatically, <a href="/verify-success?verified=true">click here</a>.</p>
+          </div>
           <script>
             // Wait a moment to ensure cookies are set, then redirect
             setTimeout(() => {
               window.location.href = '/verify-success?verified=true';
-            }, 1000);
+            }, 2000);
           </script>
         </body>
       </html>
@@ -68,7 +175,39 @@ export async function GET(req: NextRequest) {
     return response;
   } catch (error) {
     console.error('Verify email route error (GET):', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+
+    // Return a proper HTML page with error message
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Server Error</title>
+          <style>
+            body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f9fafb; }
+            .container { text-align: center; padding: 2rem; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; }
+            .error-icon { font-size: 3rem; color: #ef4444; margin-bottom: 1rem; }
+            h1 { color: #dc2626; margin-bottom: 1rem; }
+            p { color: #6b7280; margin-bottom: 1.5rem; }
+            a { display: inline-block; background-color: #4f46e5; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; text-decoration: none; }
+            a:hover { background-color: #4338ca; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="error-icon">❌</div>
+            <h1>Server Error</h1>
+            <p>An error occurred during email verification. Please try again later.</p>
+            <a href="/login">Go to Login</a>
+          </div>
+        </body>
+      </html>
+    `;
+
+    return new NextResponse(html, {
+      status: 500,
+      headers: { 'Content-Type': 'text/html' },
+    });
   }
 }
 

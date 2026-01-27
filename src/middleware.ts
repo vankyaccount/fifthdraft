@@ -1,6 +1,7 @@
 // Edge-compatible middleware for JWT authentication
 import { NextResponse, type NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
+import { query } from '@/lib/db/postgres';
 
 // Get JWT secret as Uint8Array for jose
 const getJwtSecret = () => {
@@ -28,6 +29,25 @@ async function verifyToken(token: string): Promise<UserPayload | null> {
   } catch (error) {
     console.log('Middleware: Token verification failed:', error instanceof Error ? error.message : 'Unknown error');
     return null;
+  }
+}
+
+// Function to check if user's email is verified
+async function isEmailVerified(userId: string): Promise<boolean> {
+  try {
+    const result = await query<{ email_verified: boolean }>(
+      'SELECT email_verified FROM auth_users WHERE id = $1',
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return false;
+    }
+
+    return result.rows[0].email_verified;
+  } catch (error) {
+    console.error('Middleware: Error checking email verification status:', error);
+    return false; // Default to false if there's an error
   }
 }
 
@@ -77,10 +97,28 @@ export async function middleware(request: NextRequest) {
       }
       return NextResponse.redirect(redirectUrl);
     }
+
+    // Check if user's email is verified
+    const isVerified = await isEmailVerified(user.sub);
+    if (!isVerified) {
+      console.log('Middleware: User email not verified, redirecting to /unverified');
+      // Redirect unverified users to the unverified page
+      const forwardedHost = request.headers.get('x-forwarded-host');
+      const forwardedProto = request.headers.get('x-forwarded-proto');
+
+      let redirectUrl = '/unverified';
+      if (forwardedHost && forwardedProto) {
+        redirectUrl = `${forwardedProto}://${forwardedHost}/unverified`;
+      } else {
+        redirectUrl = '/unverified';
+      }
+      return NextResponse.redirect(redirectUrl);
+    }
+
     console.log('Middleware: User authenticated for dashboard:', user.email);
   }
 
-  // Redirect authenticated users away from auth pages (except reset-password)
+  // Redirect authenticated users away from auth pages (except reset-password and unverified)
   if (
     (pathname.startsWith('/login') ||
       pathname.startsWith('/signup') ||
@@ -114,5 +152,6 @@ export const config = {
     '/forgot-password',
     '/reset-password',
     '/verify-success',
+    '/unverified',
   ],
 };
