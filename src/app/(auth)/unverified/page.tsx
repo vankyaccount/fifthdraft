@@ -141,14 +141,14 @@ export default function UnverifiedPage() {
             >
               {status === 'loading' ? 'Sending...' : 'Resend Verification Email'}
             </button>
-            
+
             <button
               onClick={() => router.push('/dashboard')}
               className="w-full text-indigo-600 hover:text-indigo-700 font-medium"
             >
               Skip for now (limited features)
             </button>
-            
+
             <button
               onClick={() => router.push('/logout')}
               className="block text-sm text-gray-600 hover:text-gray-900 mt-4"
