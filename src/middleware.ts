@@ -82,7 +82,9 @@ export async function middleware(request: NextRequest) {
     }
 
     // Check if user's email is verified
-    if (!user.email_verified) {
+    // Allow bypassing email verification for development/testing
+    const bypassEmailVerification = process.env.BYPASS_EMAIL_VERIFICATION === 'true';
+    if (!bypassEmailVerification && !user.email_verified) {
       console.log('Middleware: User email not verified, redirecting to /unverified');
       // Redirect unverified users to the unverified page
       const forwardedHost = request.headers.get('x-forwarded-host');
