@@ -115,6 +115,7 @@ export async function POST(req: NextRequest) {
       stack: error instanceof Error ? error.stack : undefined,
     });
 
+    const contentType = req.headers.get('content-type') || '';
     if (contentType.includes('application/x-www-form-urlencoded')) {
       // For form submission, redirect with error
       const forwardedHost = req.headers.get('x-forwarded-host');
