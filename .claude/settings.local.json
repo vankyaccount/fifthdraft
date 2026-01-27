@@ -12,7 +12,10 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\nFix Next.js 16 async params compatibility for route handlers\n\nUpdate all dynamic route handlers to use async params syntax required by Next.js 16.\nChanged params from synchronous object to Promise that must be awaited.\n\n- Updated action-items route handlers \\(GET, PATCH, DELETE\\)\n- Updated notes routes \\(mindmap, project-brief, related, reprocess, research\\)\n- Updated notes search route\n- Updated notes/[id] page component\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git restore:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nComplete database migration from Supabase to PostgreSQL\n\nThis commit finalizes the migration away from Supabase to direct PostgreSQL:\n- Refactored auth server to wrap user in object for consistency\n- Updated all components to handle new auth response format\n- Cleaned up database query error handling\n- Added deployment status tracking\n- Updated TypeScript config to exclude scripts folder\n- Added Supabase types file for backward compatibility\n\nAll database queries now use direct PostgreSQL through the db query interface.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git push)"
+      "Bash(git push)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }
