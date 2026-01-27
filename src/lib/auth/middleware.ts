@@ -120,8 +120,16 @@ export async function getServerUserWithProfile(cookies: {
 // Cookie options for auth tokens
 export const AUTH_COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
+  // Only use secure cookies when actually on HTTPS
+  // For HTTP environments (no SSL certificate), secure must be false
+  secure: process.env.AUTH_COOKIE_SECURE
+          ? process.env.AUTH_COOKIE_SECURE === 'true'
+          : false, // Changed from checking NODE_ENV to defaulting to false for HTTP environments
+  // Use 'lax' for same-site requests in HTTP environments
+  // 'none' requires secure=true (HTTPS), so we avoid it when not on HTTPS
+  sameSite: process.env.AUTH_COOKIE_SAMESITE
+            ? process.env.AUTH_COOKIE_SAMESITE as 'strict' | 'lax' | 'none'
+            : 'lax' as const, // Changed to default to 'lax' for HTTP environments
   path: '/',
 };
 
@@ -146,6 +154,8 @@ export function setAuthCookies(
     sameSite: AUTH_COOKIE_OPTIONS.sameSite,
     path: AUTH_COOKIE_OPTIONS.path,
     nodeEnv: process.env.NODE_ENV,
+    authCookieSecure: process.env.AUTH_COOKIE_SECURE,
+    authCookieSameSite: process.env.AUTH_COOKIE_SAMESITE,
   });
 
   response.cookies.set('access_token', accessToken, accessCookieOptions);
@@ -153,7 +163,7 @@ export function setAuthCookies(
 
   // Debug: Log the Set-Cookie headers that will be sent
   const setCookieHeaders = response.headers.getSetCookie();
-  console.log('Set-Cookie headers:', setCookieHeaders.length > 0 ? setCookieHeaders : 'NONE - cookies may not be set correctly');
+  console.log('Set-Cookie headers after setting:', setCookieHeaders.length > 0 ? setCookieHeaders.map(h => h.split(';')[0]) : 'NONE - cookies may not be set correctly');
 }
 
 // Clear auth cookies on response

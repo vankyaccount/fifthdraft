@@ -30,7 +30,16 @@ export async function POST(req: NextRequest) {
 
     if (!email || !password) {
       if (isFormSubmission) {
-        return NextResponse.redirect(new URL('/login?error=Email and password are required', req.url));
+        // Check for proxy headers to determine the correct host for redirect
+        const forwardedHost = req.headers.get('x-forwarded-host');
+        const forwardedProto = req.headers.get('x-forwarded-proto');
+
+        let redirectUrl = `/login?error=${encodeURIComponent('Email and password are required')}`;
+        if (forwardedHost && forwardedProto) {
+          redirectUrl = `${forwardedProto}://${forwardedHost}/login?error=${encodeURIComponent('Email and password are required')}`;
+        }
+
+        return NextResponse.redirect(redirectUrl);
       }
       return NextResponse.json(
         { error: 'Email and password are required' },
@@ -43,7 +52,16 @@ export async function POST(req: NextRequest) {
     if (result.error) {
       console.log('Login failed:', { email, error: result.error });
       if (isFormSubmission) {
-        return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(result.error)}`, req.url));
+        // Check for proxy headers to determine the correct host for redirect
+        const forwardedHost = req.headers.get('x-forwarded-host');
+        const forwardedProto = req.headers.get('x-forwarded-proto');
+
+        let redirectUrl = `/login?error=${encodeURIComponent(result.error)}`;
+        if (forwardedHost && forwardedProto) {
+          redirectUrl = `${forwardedProto}://${forwardedHost}/login?error=${encodeURIComponent(result.error)}`;
+        }
+
+        return NextResponse.redirect(redirectUrl);
       }
       return NextResponse.json({ error: result.error }, { status: 401 });
     }
@@ -52,7 +70,20 @@ export async function POST(req: NextRequest) {
 
     if (isFormSubmission) {
       // For form submission, redirect to dashboard with cookies set
-      const response = NextResponse.redirect(new URL('/dashboard', req.url));
+      // Check for proxy headers to determine the correct host
+      const forwardedHost = req.headers.get('x-forwarded-host');
+      const forwardedProto = req.headers.get('x-forwarded-proto');
+
+      let redirectUrl = '/dashboard';
+      if (forwardedHost && forwardedProto) {
+        // Construct the redirect URL using the original host
+        redirectUrl = `${forwardedProto}://${forwardedHost}/dashboard`;
+      } else {
+        // Fallback to relative redirect
+        redirectUrl = '/dashboard';
+      }
+
+      const response = NextResponse.redirect(redirectUrl);
       if (result.tokens) {
         setAuthCookies(response, result.tokens.accessToken, result.tokens.refreshToken);
         console.log('Auth cookies set on redirect for user:', email);

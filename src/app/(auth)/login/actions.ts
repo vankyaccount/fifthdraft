@@ -5,8 +5,16 @@ import { AuthService } from '@/lib/auth';
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
+  // Only use secure cookies when actually on HTTPS
+  // For HTTP environments (no SSL certificate), secure must be false
+  secure: process.env.AUTH_COOKIE_SECURE
+          ? process.env.AUTH_COOKIE_SECURE === 'true'
+          : false, // Changed from checking NODE_ENV to defaulting to false for HTTP environments
+  // Use 'lax' for same-site requests in HTTP environments
+  // 'none' requires secure=true (HTTPS), so we avoid it when not on HTTPS
+  sameSite: process.env.AUTH_COOKIE_SAMESITE
+            ? process.env.AUTH_COOKIE_SAMESITE as 'strict' | 'lax' | 'none'
+            : 'lax' as const, // Changed to default to 'lax' for HTTP environments
   path: '/',
 };
 
@@ -26,7 +34,12 @@ export async function loginAction(email: string, password: string): Promise<{ su
       return { success: false, error: 'Authentication failed' };
     }
 
-    // Set cookies using next/headers - this is the reliable way in Next.js
+    // For consistency with API routes, we'll redirect to set cookies properly
+    // Server actions cookies might not propagate properly in all deployment scenarios
+    // So we'll return success and let the client handle the redirect/set cookies
+
+    // Actually, let's try a different approach - directly return success
+    // The cookies should be set properly with the updated options
     const cookieStore = await cookies();
 
     cookieStore.set('access_token', result.tokens.accessToken, {

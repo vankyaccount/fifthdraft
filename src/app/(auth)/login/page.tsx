@@ -1,13 +1,17 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Logo from '@/components/ui/Logo'
+import { login } from '@/lib/auth/client'
 
 function LoginForm() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
   const searchParams = useSearchParams()
 
   // Check for error in URL (from form submission redirect)
@@ -18,10 +22,27 @@ function LoginForm() {
     }
   }, [searchParams])
 
-  const handleSubmit = () => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
     setLoading(true)
     setError(null)
-    // Form will submit natively - no need to prevent default
+
+    try {
+      const result = await login(email, password)
+
+      if (result.error) {
+        setError(result.error)
+      } else {
+        // Successful login - redirect to dashboard
+        router.push('/dashboard')
+        router.refresh()
+      }
+    } catch (err) {
+      console.error('Login error:', err)
+      setError('An unexpected error occurred')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -40,10 +61,7 @@ function LoginForm() {
           </p>
         </div>
 
-        {/* Native HTML form - bypasses all fetch/cookie issues */}
         <form
-          method="POST"
-          action="/api/auth/login"
           onSubmit={handleSubmit}
           className="mt-8 space-y-6"
         >
@@ -64,7 +82,10 @@ function LoginForm() {
                 type="email"
                 autoComplete="email"
                 required
-                className="mt-1 block w-full px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+                className="mt-1 block w-full px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50"
               />
             </div>
 
@@ -78,7 +99,10 @@ function LoginForm() {
                 type="password"
                 autoComplete="current-password"
                 required
-                className="mt-1 block w-full px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                className="mt-1 block w-full px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50"
               />
             </div>
 

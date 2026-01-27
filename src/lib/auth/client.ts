@@ -144,7 +144,7 @@ export async function resetPassword(
 // Verify email with token
 export async function verifyEmail(
   token: string
-): Promise<{ success?: boolean; error?: string }> {
+): Promise<{ success?: boolean; error?: string; redirect?: string }> {
   try {
     const res = await fetch('/api/auth/verify-email', {
       method: 'POST',
@@ -159,8 +159,9 @@ export async function verifyEmail(
       return { error: data.error || 'Failed to verify email' };
     }
 
-    return { success: true };
-  } catch {
+    return { success: true, redirect: data.redirect };
+  } catch (error) {
+    console.error('Verify email error:', error);
     return { error: 'Network error. Please try again.' };
   }
 }

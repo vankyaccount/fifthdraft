@@ -20,6 +20,7 @@ async function verifyToken(token: string): Promise<UserPayload | null> {
       console.log('Middleware: Token type mismatch, expected access, got:', payload.type);
       return null;
     }
+    console.log('Middleware: Token verification successful for user:', payload.sub);
     return {
       sub: payload.sub as string,
       email: payload.email as string,
@@ -35,12 +36,21 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Debug logging for protected routes
-  if (pathname.startsWith('/dashboard')) {
+  if (pathname.startsWith('/dashboard') || pathname.includes('verify-email') || pathname.includes('verify-success')) {
+    const allCookies = request.cookies.getAll();
     console.log('Middleware:', {
       pathname,
       hasAccessToken: !!accessToken,
       tokenPreview: accessToken ? `${accessToken.substring(0, 20)}...` : 'none',
-      allCookies: request.cookies.getAll().map(c => c.name),
+      allCookies: allCookies.map(c => ({ name: c.name, valuePresent: !!c.value })),
+      cookieHeader: request.headers.get('cookie'), // This shows the raw cookie header
+      url: request.url,
+      headers: {
+        host: request.headers.get('host'),
+        origin: request.headers.get('origin'),
+        referer: request.headers.get('referer'),
+        'user-agent': request.headers.get('user-agent'),
+      },
     });
   }
 
@@ -53,7 +63,19 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith('/dashboard')) {
     if (!user) {
       console.log('Middleware: Redirecting to /login - no authenticated user, hasToken:', !!accessToken);
-      return NextResponse.redirect(new URL('/login', request.url));
+      // Check for proxy headers to determine the correct host
+      const forwardedHost = request.headers.get('x-forwarded-host');
+      const forwardedProto = request.headers.get('x-forwarded-proto');
+
+      let redirectUrl = '/login';
+      if (forwardedHost && forwardedProto) {
+        // Construct the redirect URL using the original host
+        redirectUrl = `${forwardedProto}://${forwardedHost}/login`;
+      } else {
+        // Fallback to relative redirect
+        redirectUrl = '/login';
+      }
+      return NextResponse.redirect(redirectUrl);
     }
     console.log('Middleware: User authenticated for dashboard:', user.email);
   }
@@ -66,7 +88,19 @@ export async function middleware(request: NextRequest) {
     user
   ) {
     console.log('Middleware: Redirecting authenticated user to /dashboard');
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    // Check for proxy headers to determine the correct host
+    const forwardedHost = request.headers.get('x-forwarded-host');
+    const forwardedProto = request.headers.get('x-forwarded-proto');
+
+    let redirectUrl = '/dashboard';
+    if (forwardedHost && forwardedProto) {
+      // Construct the redirect URL using the original host
+      redirectUrl = `${forwardedProto}://${forwardedHost}/dashboard`;
+    } else {
+      // Fallback to relative redirect
+      redirectUrl = '/dashboard';
+    }
+    return NextResponse.redirect(redirectUrl);
   }
 
   return NextResponse.next();
@@ -79,5 +113,6 @@ export const config = {
     '/signup',
     '/forgot-password',
     '/reset-password',
+    '/verify-success',
   ],
 };

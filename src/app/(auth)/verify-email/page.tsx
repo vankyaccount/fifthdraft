@@ -29,11 +29,16 @@ function VerifyEmailContent() {
             setMessage(result.error)
           } else {
             setStatus('success')
-            setMessage('Your email has been verified! You can now log in.')
-            // Redirect to login after 2 seconds
+            setMessage('Your email has been verified! Redirecting to dashboard...')
+            // Small delay to ensure cookies are set before redirecting
             setTimeout(() => {
-              router.push('/login')
-            }, 2000)
+              // If API provided a redirect URL, use that; otherwise use verify-success
+              if (result.redirect) {
+                window.location.href = result.redirect;
+              } else {
+                window.location.href = '/verify-success?verified=true'
+              }
+            }, 1000)
           }
         } catch (err) {
           setStatus('error')
@@ -112,12 +117,12 @@ function VerifyEmailContent() {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Email Verified!</h2>
             <p className="text-gray-600 mb-6">{message}</p>
-            <Link
-              href="/login"
+            <button
+              onClick={() => window.location.href = '/dashboard'}
               className="inline-block bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
             >
-              Sign In
-            </Link>
+              Go to Dashboard
+            </button>
           </div>
         )}
 
