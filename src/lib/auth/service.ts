@@ -24,7 +24,7 @@ export class AuthService {
   }
 
   // Generate token pair
-  static async generateTokens(userId: string, email: string, emailVerified: boolean): Promise<TokenPair> {
+  static generateTokens(userId: string, email: string, emailVerified: boolean): TokenPair {
     const accessToken = jwt.sign(
       { sub: userId, email, email_verified: emailVerified, type: 'access' } as Partial<JWTPayload>,
       JWT_SECRET,
