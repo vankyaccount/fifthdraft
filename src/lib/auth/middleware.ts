@@ -7,6 +7,7 @@ import type { Profile } from './types';
 export interface AuthenticatedUser {
   id: string;
   email: string;
+  email_verified: boolean;
 }
 
 // Extend NextRequest to include authenticated user
@@ -47,6 +48,7 @@ export async function withAuth(
   authenticatedRequest.user = {
     id: payload.sub,
     email: payload.email,
+    email_verified: payload.email_verified,
   };
 
   return handler(authenticatedRequest);
@@ -67,6 +69,7 @@ export async function withOptionalAuth(
       user = {
         id: payload.sub,
         email: payload.email,
+        email_verified: payload.email_verified,
       };
     }
   }
@@ -101,6 +104,7 @@ export async function getServerUser(cookies: {
   return {
     id: payload.sub,
     email: payload.email,
+    email_verified: payload.email_verified,
   };
 }
 

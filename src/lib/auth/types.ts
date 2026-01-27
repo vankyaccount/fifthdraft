@@ -10,6 +10,7 @@ export interface AuthUser {
 export interface JWTPayload {
   sub: string; // user id
   email: string;
+  email_verified: boolean;
   iat: number;
   exp: number;
   type: 'access' | 'refresh' | 'reset' | 'verify';

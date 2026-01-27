@@ -24,14 +24,14 @@ export class AuthService {
   }
 
   // Generate token pair
-  static generateTokens(userId: string, email: string): TokenPair {
+  static async generateTokens(userId: string, email: string, emailVerified: boolean): Promise<TokenPair> {
     const accessToken = jwt.sign(
-      { sub: userId, email, type: 'access' } as Partial<JWTPayload>,
+      { sub: userId, email, email_verified: emailVerified, type: 'access' } as Partial<JWTPayload>,
       JWT_SECRET,
       { expiresIn: ACCESS_TOKEN_EXPIRY }
     );
     const refreshToken = jwt.sign(
-      { sub: userId, email, type: 'refresh' } as Partial<JWTPayload>,
+      { sub: userId, email, email_verified: emailVerified, type: 'refresh' } as Partial<JWTPayload>,
       JWT_REFRESH_SECRET,
       { expiresIn: REFRESH_TOKEN_EXPIRY }
     );
@@ -161,7 +161,7 @@ export class AuthService {
       // Update last login
       await query('UPDATE auth_users SET last_login_at = NOW() WHERE id = $1', [user.id]);
 
-      const tokens = this.generateTokens(user.id, user.email);
+      const tokens = this.generateTokens(user.id, user.email, user.email_verified);
       return {
         tokens,
         user: {
@@ -196,7 +196,7 @@ export class AuthService {
       }
 
       const user = result.rows[0];
-      const tokens = this.generateTokens(user.id, user.email);
+      const tokens = this.generateTokens(user.id, user.email, user.email_verified);
 
       return {
         tokens,

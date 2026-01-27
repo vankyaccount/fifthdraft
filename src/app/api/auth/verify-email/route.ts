@@ -123,7 +123,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Generate tokens for the verified user
-    const tokens = AuthService.generateTokens(user.id, user.email);
+    const tokens = AuthService.generateTokens(user.id, user.email, user.email_verified);
 
     // Create response and set auth cookies
     // For direct email link access, return a simple HTML page that redirects
@@ -234,7 +234,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Generate tokens for the verified user
-    const tokens = AuthService.generateTokens(user.id, user.email);
+    const tokens = AuthService.generateTokens(user.id, user.email, user.email_verified);
 
     // Create response and set auth cookies
     // For POST requests, return JSON but client should handle redirect appropriately

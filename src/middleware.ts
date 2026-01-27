@@ -11,6 +11,7 @@ const getJwtSecret = () => {
 interface UserPayload {
   sub: string;
   email: string;
+  email_verified: boolean;
 }
 
 async function verifyToken(token: string): Promise<UserPayload | null> {
@@ -24,6 +25,7 @@ async function verifyToken(token: string): Promise<UserPayload | null> {
     return {
       sub: payload.sub as string,
       email: payload.email as string,
+      email_verified: payload.email_verified as boolean,
     };
   } catch (error) {
     console.log('Middleware: Token verification failed:', error instanceof Error ? error.message : 'Unknown error');
@@ -75,6 +77,22 @@ export async function middleware(request: NextRequest) {
       } else {
         // Fallback to relative redirect
         redirectUrl = '/login';
+      }
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // Check if user's email is verified
+    if (!user.email_verified) {
+      console.log('Middleware: User email not verified, redirecting to /unverified');
+      // Redirect unverified users to the unverified page
+      const forwardedHost = request.headers.get('x-forwarded-host');
+      const forwardedProto = request.headers.get('x-forwarded-proto');
+
+      let redirectUrl = '/unverified';
+      if (forwardedHost && forwardedProto) {
+        redirectUrl = `${forwardedProto}://${forwardedHost}/unverified`;
+      } else {
+        redirectUrl = '/unverified';
       }
       return NextResponse.redirect(redirectUrl);
     }
