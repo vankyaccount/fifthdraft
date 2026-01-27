@@ -7,7 +7,6 @@ import type { Profile } from './types';
 export interface AuthenticatedUser {
   id: string;
   email: string;
-  email_verified?: boolean;
 }
 
 // Extend NextRequest to include authenticated user
@@ -99,25 +98,9 @@ export async function getServerUser(cookies: {
   const payload = AuthService.verifyAccessToken(token);
   if (!payload) return null;
 
-  // Also fetch email verification status
-  let emailVerified = false;
-  try {
-    const result = await query<{ email_verified: boolean }>(
-      'SELECT email_verified FROM auth_users WHERE id = $1',
-      [payload.sub]
-    );
-    if (result.rows.length > 0) {
-      emailVerified = result.rows[0].email_verified;
-    }
-  } catch (error) {
-    console.error('Error fetching email verification status:', error);
-    // If there's an error, we'll return the user without email_verified status
-  }
-
   return {
     id: payload.sub,
     email: payload.email,
-    email_verified: emailVerified,
   };
 }
 

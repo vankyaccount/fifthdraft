@@ -3,6 +3,26 @@ import { redirect } from 'next/navigation'
 import DashboardNav from '@/components/dashboard/DashboardNav'
 import DashboardHeader from '@/components/dashboard/DashboardHeader'
 import { DashboardProvider } from '@/components/dashboard/DashboardContext'
+import { query } from '@/lib/db/postgres'
+
+// Helper function to check if user's email is verified
+async function isEmailVerified(userId: string): Promise<boolean> {
+  try {
+    const result = await query<{ email_verified: boolean }>(
+      'SELECT email_verified FROM auth_users WHERE id = $1',
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return false;
+    }
+
+    return result.rows[0].email_verified;
+  } catch (error) {
+    console.error('Error checking email verification status:', error);
+    return false; // Default to false if there's an error
+  }
+}
 
 export default async function DashboardLayout({
   children,
@@ -28,7 +48,8 @@ export default async function DashboardLayout({
   const { user, profile } = result
 
   // Check if user's email is verified, if not redirect to unverified page
-  if (!user.email_verified) {
+  const isVerified = await isEmailVerified(user.id);
+  if (!isVerified) {
     // Render a simple page prompting the user to verify their email
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
