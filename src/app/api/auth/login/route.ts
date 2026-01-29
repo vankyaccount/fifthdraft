@@ -1,6 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AuthService, setAuthCookies } from '@/lib/auth';
 
+// Force Node.js runtime for database operations
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+// Helper function to get base URL from request (handles reverse proxy)
+function getBaseUrl(req: NextRequest): string {
+  const forwardedHost = req.headers.get('x-forwarded-host');
+  const forwardedProto = req.headers.get('x-forwarded-proto') || 'https';
+
+  if (forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+
+  // Fallback to request URL
+  const url = new URL(req.url);
+  return `${url.protocol}//${url.host}`;
+}
+
+// Helper to create redirect URL
+function createRedirectUrl(req: NextRequest, path: string): URL {
+  const forwardedHost = req.headers.get('x-forwarded-host');
+  const forwardedProto = req.headers.get('x-forwarded-proto') || 'https';
+
+  if (forwardedHost) {
+    return new URL(path, `${forwardedProto}://${forwardedHost}`);
+  }
+  return new URL(path, req.url);
+}
+
 export async function POST(req: NextRequest) {
   console.log('Login API called');
 
@@ -30,15 +59,7 @@ export async function POST(req: NextRequest) {
 
     if (!email || !password) {
       if (isFormSubmission) {
-        // Check for proxy headers to determine the correct host for redirect
-        const forwardedHost = req.headers.get('x-forwarded-host');
-        const forwardedProto = req.headers.get('x-forwarded-proto');
-
-        let redirectUrl = `/login?error=${encodeURIComponent('Email and password are required')}`;
-        if (forwardedHost && forwardedProto) {
-          redirectUrl = `${forwardedProto}://${forwardedHost}/login?error=${encodeURIComponent('Email and password are required')}`;
-        }
-
+        const redirectUrl = createRedirectUrl(req, `/login?error=${encodeURIComponent('Email and password are required')}`);
         return NextResponse.redirect(redirectUrl);
       }
       return NextResponse.json(
@@ -52,15 +73,7 @@ export async function POST(req: NextRequest) {
     if (result.error) {
       console.log('Login failed:', { email, error: result.error });
       if (isFormSubmission) {
-        // Check for proxy headers to determine the correct host for redirect
-        const forwardedHost = req.headers.get('x-forwarded-host');
-        const forwardedProto = req.headers.get('x-forwarded-proto');
-
-        let redirectUrl = `/login?error=${encodeURIComponent(result.error)}`;
-        if (forwardedHost && forwardedProto) {
-          redirectUrl = `${forwardedProto}://${forwardedHost}/login?error=${encodeURIComponent(result.error)}`;
-        }
-
+        const redirectUrl = createRedirectUrl(req, `/login?error=${encodeURIComponent(result.error)}`);
         return NextResponse.redirect(redirectUrl);
       }
       return NextResponse.json({ error: result.error }, { status: 401 });
@@ -70,19 +83,7 @@ export async function POST(req: NextRequest) {
 
     if (isFormSubmission) {
       // For form submission, redirect to dashboard with cookies set
-      // Check for proxy headers to determine the correct host
-      const forwardedHost = req.headers.get('x-forwarded-host');
-      const forwardedProto = req.headers.get('x-forwarded-proto');
-
-      let redirectUrl = '/dashboard';
-      if (forwardedHost && forwardedProto) {
-        // Construct the redirect URL using the original host
-        redirectUrl = `${forwardedProto}://${forwardedHost}/dashboard`;
-      } else {
-        // Fallback to relative redirect
-        redirectUrl = '/dashboard';
-      }
-
+      const redirectUrl = createRedirectUrl(req, '/dashboard');
       const response = NextResponse.redirect(redirectUrl);
       if (result.tokens) {
         setAuthCookies(response, result.tokens.accessToken, result.tokens.refreshToken);

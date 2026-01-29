@@ -62,23 +62,24 @@ export async function middleware(request: NextRequest) {
     user = await verifyToken(accessToken);
   }
 
+  // Helper function to create redirect URL properly
+  const createRedirectUrl = (path: string): URL => {
+    const forwardedHost = request.headers.get('x-forwarded-host');
+    const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
+
+    if (forwardedHost) {
+      // Behind a proxy - construct full URL with forwarded headers
+      return new URL(path, `${forwardedProto}://${forwardedHost}`);
+    }
+    // Direct access - use request URL as base
+    return new URL(path, request.url);
+  };
+
   // Protect dashboard routes
   if (pathname.startsWith('/dashboard')) {
     if (!user) {
       console.log('Middleware: Redirecting to /login - no authenticated user, hasToken:', !!accessToken);
-      // Check for proxy headers to determine the correct host
-      const forwardedHost = request.headers.get('x-forwarded-host');
-      const forwardedProto = request.headers.get('x-forwarded-proto');
-
-      let redirectUrl = '/login';
-      if (forwardedHost && forwardedProto) {
-        // Construct the redirect URL using the original host
-        redirectUrl = `${forwardedProto}://${forwardedHost}/login`;
-      } else {
-        // Fallback to relative redirect
-        redirectUrl = '/login';
-      }
-      return NextResponse.redirect(redirectUrl);
+      return NextResponse.redirect(createRedirectUrl('/login'));
     }
 
     // Check if user's email is verified
@@ -86,17 +87,7 @@ export async function middleware(request: NextRequest) {
     const bypassEmailVerification = process.env.BYPASS_EMAIL_VERIFICATION === 'true';
     if (!bypassEmailVerification && !user.email_verified) {
       console.log('Middleware: User email not verified, redirecting to /unverified');
-      // Redirect unverified users to the unverified page
-      const forwardedHost = request.headers.get('x-forwarded-host');
-      const forwardedProto = request.headers.get('x-forwarded-proto');
-
-      let redirectUrl = '/unverified';
-      if (forwardedHost && forwardedProto) {
-        redirectUrl = `${forwardedProto}://${forwardedHost}/unverified`;
-      } else {
-        redirectUrl = '/unverified';
-      }
-      return NextResponse.redirect(redirectUrl);
+      return NextResponse.redirect(createRedirectUrl('/unverified'));
     }
 
     console.log('Middleware: User authenticated for dashboard:', user.email);
@@ -110,19 +101,7 @@ export async function middleware(request: NextRequest) {
     user
   ) {
     console.log('Middleware: Redirecting authenticated user to /dashboard');
-    // Check for proxy headers to determine the correct host
-    const forwardedHost = request.headers.get('x-forwarded-host');
-    const forwardedProto = request.headers.get('x-forwarded-proto');
-
-    let redirectUrl = '/dashboard';
-    if (forwardedHost && forwardedProto) {
-      // Construct the redirect URL using the original host
-      redirectUrl = `${forwardedProto}://${forwardedHost}/dashboard`;
-    } else {
-      // Fallback to relative redirect
-      redirectUrl = '/dashboard';
-    }
-    return NextResponse.redirect(redirectUrl);
+    return NextResponse.redirect(createRedirectUrl('/dashboard'));
   }
 
   return NextResponse.next();

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AuthService, withAuth, type AuthenticatedRequest } from '@/lib/auth';
 
+// Force Node.js runtime for database operations
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   return withAuth(req, async (authReq: AuthenticatedRequest) => {
     try {

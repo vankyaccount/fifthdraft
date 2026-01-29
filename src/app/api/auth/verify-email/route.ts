@@ -2,15 +2,38 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AuthService } from '@/lib/auth';
 import { setAuthCookies } from '@/lib/auth/middleware';
 
+// Force Node.js runtime for database operations
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+// Helper function to get base URL from request (handles reverse proxy)
+function getBaseUrl(req: NextRequest): string {
+  const forwardedHost = req.headers.get('x-forwarded-host');
+  const forwardedProto = req.headers.get('x-forwarded-proto') || 'https';
+
+  if (forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+
+  // Fallback to request URL
+  const url = new URL(req.url);
+  return `${url.protocol}//${url.host}`;
+}
+
 export async function GET(req: NextRequest) {
   console.log('Verify email GET called');
+  // Get base URL outside try block so it's available in catch
+  const baseUrl = getBaseUrl(req);
+
   try {
     const { searchParams } = new URL(req.url);
     const token = searchParams.get('token');
     console.log('Verify email token (GET):', token ? `${token.substring(0, 8)}...` : 'none');
+    console.log('Base URL:', baseUrl);
 
     if (!token) {
       // Return a proper HTML page with error message
+      const loginUrl = `${baseUrl}/login`;
       const html = `
         <!DOCTYPE html>
         <html>
@@ -32,7 +55,7 @@ export async function GET(req: NextRequest) {
               <div class="error-icon">❌</div>
               <h1>Verification Failed</h1>
               <p>No verification token provided. Please check your email link.</p>
-              <a href="/login">Go to Login</a>
+              <a href="${loginUrl}">Go to Login</a>
             </div>
           </body>
         </html>
@@ -50,6 +73,7 @@ export async function GET(req: NextRequest) {
       console.log('Verify email failed (GET):', result.error);
 
       // Return a proper HTML page with error message
+      const loginUrl = `${baseUrl}/login`;
       const html = `
         <!DOCTYPE html>
         <html>
@@ -71,7 +95,7 @@ export async function GET(req: NextRequest) {
               <div class="error-icon">❌</div>
               <h1>Verification Failed</h1>
               <p>${result.error || 'Invalid or expired verification token'}</p>
-              <a href="/login">Go to Login</a>
+              <a href="${loginUrl}">Go to Login</a>
             </div>
           </body>
         </html>
@@ -89,6 +113,7 @@ export async function GET(req: NextRequest) {
     const user = await AuthService.getUserById(result.userId!);
     if (!user) {
       // Return a proper HTML page with error message
+      const loginUrl = `${baseUrl}/login`;
       const html = `
         <!DOCTYPE html>
         <html>
@@ -110,7 +135,7 @@ export async function GET(req: NextRequest) {
               <div class="error-icon">❌</div>
               <h1>Verification Failed</h1>
               <p>User not found after verification</p>
-              <a href="/login">Go to Login</a>
+              <a href="${loginUrl}">Go to Login</a>
             </div>
           </body>
         </html>
@@ -128,13 +153,15 @@ export async function GET(req: NextRequest) {
     // Create response and set auth cookies
     // For direct email link access, return a simple HTML page that redirects
     // This ensures cookies are set and the browser redirects properly
+    const successRedirectUrl = `${baseUrl}/verify-success?verified=true`;
+    const dashboardUrl = `${baseUrl}/dashboard`;
     const html = `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="utf-8">
           <title>Email Verified</title>
-          <meta http-equiv="refresh" content="2;url=/verify-success?verified=true">
+          <meta http-equiv="refresh" content="2;url=${successRedirectUrl}">
           <style>
             body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f9fafb; }
             .container { text-align: center; padding: 2rem; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; }
@@ -151,12 +178,12 @@ export async function GET(req: NextRequest) {
             <h1>Email Verified!</h1>
             <div class="loader"></div>
             <p>Your email has been verified successfully. Redirecting to dashboard...</p>
-            <p>If you're not redirected automatically, <a href="/verify-success?verified=true">click here</a>.</p>
+            <p>If you're not redirected automatically, <a href="${dashboardUrl}">click here</a>.</p>
           </div>
           <script>
             // Wait a moment to ensure cookies are set, then redirect
             setTimeout(() => {
-              window.location.href = '/verify-success?verified=true';
+              window.location.href = '${successRedirectUrl}';
             }, 2000);
           </script>
         </body>
@@ -177,6 +204,7 @@ export async function GET(req: NextRequest) {
     console.error('Verify email route error (GET):', error);
 
     // Return a proper HTML page with error message
+    const loginUrl = `${baseUrl}/login`;
     const html = `
       <!DOCTYPE html>
       <html>
@@ -198,7 +226,7 @@ export async function GET(req: NextRequest) {
             <div class="error-icon">❌</div>
             <h1>Server Error</h1>
             <p>An error occurred during email verification. Please try again later.</p>
-            <a href="/login">Go to Login</a>
+            <a href="${loginUrl}">Go to Login</a>
           </div>
         </body>
       </html>

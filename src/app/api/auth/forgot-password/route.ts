@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AuthService } from '@/lib/auth';
 
+// Force Node.js runtime for database operations
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+// Helper to create redirect URL (handles reverse proxy)
+function createRedirectUrl(req: NextRequest, path: string): URL {
+  const forwardedHost = req.headers.get('x-forwarded-host');
+  const forwardedProto = req.headers.get('x-forwarded-proto') || 'https';
+
+  if (forwardedHost) {
+    return new URL(path, `${forwardedProto}://${forwardedHost}`);
+  }
+  return new URL(path, req.url);
+}
+
 export async function POST(req: NextRequest) {
   try {
     // Check if this is a form submission or JSON request
@@ -21,15 +36,7 @@ export async function POST(req: NextRequest) {
 
     if (!email) {
       if (isFormSubmission) {
-        // Check for proxy headers to determine the correct host for redirect
-        const forwardedHost = req.headers.get('x-forwarded-host');
-        const forwardedProto = req.headers.get('x-forwarded-proto');
-
-        let redirectUrl = `/forgot-password?error=${encodeURIComponent('Email is required')}`;
-        if (forwardedHost && forwardedProto) {
-          redirectUrl = `${forwardedProto}://${forwardedHost}/forgot-password?error=${encodeURIComponent('Email is required')}`;
-        }
-
+        const redirectUrl = createRedirectUrl(req, `/forgot-password?error=${encodeURIComponent('Email is required')}`);
         return NextResponse.redirect(redirectUrl);
       }
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
@@ -40,15 +47,7 @@ export async function POST(req: NextRequest) {
 
     if (isFormSubmission) {
       // For form submission, redirect to success page
-      // Check for proxy headers to determine the correct host
-      const forwardedHost = req.headers.get('x-forwarded-host');
-      const forwardedProto = req.headers.get('x-forwarded-proto');
-
-      let redirectUrl = `/forgot-password?success=true&email=${encodeURIComponent(email)}`;
-      if (forwardedHost && forwardedProto) {
-        redirectUrl = `${forwardedProto}://${forwardedHost}/forgot-password?success=true&email=${encodeURIComponent(email)}`;
-      }
-
+      const redirectUrl = createRedirectUrl(req, `/forgot-password?success=true&email=${encodeURIComponent(email)}`);
       return NextResponse.redirect(redirectUrl);
     }
 
@@ -62,14 +61,7 @@ export async function POST(req: NextRequest) {
     const contentType = req.headers.get('content-type') || '';
     if (contentType.includes('application/x-www-form-urlencoded')) {
       // For form submission, redirect with error
-      const forwardedHost = req.headers.get('x-forwarded-host');
-      const forwardedProto = req.headers.get('x-forwarded-proto');
-
-      let redirectUrl = `/forgot-password?error=${encodeURIComponent('Internal server error')}`;
-      if (forwardedHost && forwardedProto) {
-        redirectUrl = `${forwardedProto}://${forwardedHost}/forgot-password?error=${encodeURIComponent('Internal server error')}`;
-      }
-
+      const redirectUrl = createRedirectUrl(req, `/forgot-password?error=${encodeURIComponent('Internal server error')}`);
       return NextResponse.redirect(redirectUrl);
     }
 
