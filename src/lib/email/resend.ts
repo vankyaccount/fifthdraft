@@ -1,7 +1,15 @@
 // Email service using Resend
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy initialization to prevent crashes when API key is not set
+let resend: Resend | null = null;
+
+function getResendClient(): Resend | null {
+  if (!resend && process.env.RESEND_API_KEY) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+}
 
 const FROM_EMAIL = process.env.EMAIL_FROM || 'FifthDraft <onboarding@resend.dev>';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -22,12 +30,13 @@ export class EmailService {
         subject,
       });
 
-      if (!process.env.RESEND_API_KEY) {
+      const client = getResendClient();
+      if (!client) {
         console.warn('RESEND_API_KEY not configured - email not sent');
         return { success: false, error: 'Email service not configured' };
       }
 
-      const result = await resend.emails.send({
+      const result = await client.emails.send({
         from: FROM_EMAIL,
         to,
         subject,
@@ -52,7 +61,9 @@ export class EmailService {
   }
 
   static async sendVerificationEmail(email: string, token: string): Promise<{ success: boolean; error?: string }> {
-    const verifyUrl = `${APP_URL}/verify-email?token=${token}`;
+    // Use the API route directly - it returns HTML and handles verification server-side
+    // This is more reliable than loading the React page which can have SSR issues
+    const verifyUrl = `${APP_URL}/api/auth/verify-email?token=${token}`;
 
     const html = `
       <!DOCTYPE html>

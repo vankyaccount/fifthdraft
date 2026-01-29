@@ -33,9 +33,9 @@ function LoginForm() {
       if (result.error) {
         setError(result.error)
       } else {
-        // Successful login - redirect to dashboard
-        router.push('/dashboard')
-        router.refresh()
+        // Successful login - use full page navigation to ensure cookies are sent
+        // router.push() does soft navigation which doesn't properly send new cookies
+        window.location.href = '/dashboard'
       }
     } catch (err) {
       console.error('Login error:', err)
