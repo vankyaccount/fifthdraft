@@ -60,13 +60,14 @@ export async function login(
 export async function signup(
   email: string,
   password: string,
-  fullName: string
+  fullName: string,
+  mobile?: string
 ): Promise<{ success?: boolean; needsVerification?: boolean; error?: string }> {
   try {
     const res = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, fullName }),
+      body: JSON.stringify({ email, password, fullName, mobile: mobile || null }),
       credentials: 'include',
     });
 

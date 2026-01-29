@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
     let email: string;
     let password: string;
     let fullName: string;
+    let mobile: string | null = null;
     let isFormSubmission = false;
 
     if (contentType.includes('application/x-www-form-urlencoded')) {
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
       email = formData.get('email') as string;
       password = formData.get('password') as string;
       fullName = formData.get('fullName') as string || '';
+      mobile = formData.get('mobile') as string || null;
       isFormSubmission = true;
     } else {
       // JSON request
@@ -38,9 +40,10 @@ export async function POST(req: NextRequest) {
       email = body.email;
       password = body.password;
       fullName = body.fullName || '';
+      mobile = body.mobile || null;
     }
 
-    console.log('Signup attempt:', { email, hasPassword: !!password, fullName });
+    console.log('Signup attempt:', { email, hasPassword: !!password, fullName, hasMobile: !!mobile });
 
     if (!email || !password) {
       if (isFormSubmission) {
@@ -64,7 +67,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await AuthService.signUp(email, password, fullName);
+    const result = await AuthService.signUp(email, password, fullName, mobile);
 
     if (result.error) {
       console.error('Signup failed:', { email, error: result.error });

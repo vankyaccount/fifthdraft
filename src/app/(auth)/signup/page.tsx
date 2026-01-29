@@ -44,7 +44,7 @@ export default function SignupPage() {
       return
     }
 
-    const result = await signup(email, password, fullName)
+    const result = await signup(email, password, fullName, mobile || undefined)
 
     if (result.error) {
       setError(result.error)

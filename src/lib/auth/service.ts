@@ -61,7 +61,7 @@ export class AuthService {
   }
 
   // Sign up new user
-  static async signUp(email: string, password: string, fullName: string): Promise<SignUpResult> {
+  static async signUp(email: string, password: string, fullName: string, mobile?: string | null): Promise<SignUpResult> {
     try {
       // Validate input
       if (!email || !password || password.length < 6) {
@@ -78,6 +78,9 @@ export class AuthService {
       const userId = crypto.randomUUID();
       const verifyToken = crypto.randomBytes(32).toString('hex');
 
+      // Normalize mobile number (remove spaces, ensure valid format)
+      const normalizedMobile = mobile ? mobile.replace(/\s/g, '') : null;
+
       await transaction(async (client) => {
         // Create auth user
         await client.query(
@@ -86,11 +89,11 @@ export class AuthService {
           [userId, email.toLowerCase(), passwordHash, verifyToken]
         );
 
-        // Create profile
+        // Create profile with mobile
         await client.query(
-          `INSERT INTO profiles (id, email, full_name, subscription_tier, role, minutes_quota, minutes_used, settings, onboarding_completed, created_at, updated_at)
-           VALUES ($1, $2, $3, 'free', 'user', 30, 0, '{}', false, NOW(), NOW())`,
-          [userId, email.toLowerCase(), fullName || '']
+          `INSERT INTO profiles (id, email, full_name, mobile, subscription_tier, role, minutes_quota, minutes_used, settings, onboarding_completed, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, 'free', 'user', 30, 0, '{}', false, NOW(), NOW())`,
+          [userId, email.toLowerCase(), fullName || '', normalizedMobile]
         );
       });
 
